@@ -75,13 +75,13 @@ toplevel_package_excludes = [
 
 
 requirements = [
-    "torch==1.13.1",
+    "torch==2.1.0",
     "black",
     "numpy==1.22.0",
     "scipy",
     "SimpleITK!=2.0.*",
     "SimpleITK!=2.2.1",  # https://github.com/mlcommons/GaNDLF/issues/536
-    "torchvision",
+    "torchvision==0.16.0",
     "tqdm",
     "torchio==0.18.75",
     "pandas<2.0.0",
@@ -99,7 +99,7 @@ requirements = [
     "psutil",
     "medcam",
     "opencv-python",
-    "torchmetrics==0.8.1",
+    "torchmetrics==1.2.0",
     "zarr==2.10.3",
     "pydicom",
     "onnx",
