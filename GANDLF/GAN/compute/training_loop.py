@@ -29,7 +29,7 @@ from GANDLF.utils import (
 from GANDLF.metrics import overall_stats
 from GANDLF.logger import LoggerGAN
 from .step import step_gan
-from .forward_pass import validate_network
+from .forward_pass import validate_network_gan
 from .generic import create_pytorch_objects_gan
 from typing import Union
 from pathlib import Path
@@ -551,7 +551,7 @@ def training_loop_gans(
                 scheduler_g,
                 params,
                 epoch,
-                mode="testing",
+                mode="inference",
             )
             test_logger.write(
                 epoch,
@@ -570,3 +570,59 @@ def training_loop_gans(
         )
 
         model_dict = get_model_dict(model, params["device_id"])
+
+
+if __name__ == "__main__":
+    import argparse, pickle, pandas
+
+    torch.multiprocessing.freeze_support()
+    # parse the cli arguments here
+    parser = argparse.ArgumentParser(description="Training Loop of GANDLF")
+    parser.add_argument(
+        "-train_loader_pickle",
+        type=str,
+        help="Train loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-val_loader_pickle",
+        type=str,
+        help="Validation loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-testing_loader_pickle",
+        type=str,
+        help="Testing loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-parameter_pickle", type=str, help="Parameters pickle", required=True
+    )
+    parser.add_argument(
+        "-outputDir", type=str, help="Output directory", required=True
+    )
+    parser.add_argument(
+        "-device", type=str, help="Device to train on", required=True
+    )
+
+    args = parser.parse_args()
+
+    # # write parameters to pickle - this should not change for the different folds, so keeping is independent
+    parameters = pickle.load(open(args.parameter_pickle, "rb"))
+    trainingDataFromPickle = pandas.read_pickle(args.train_loader_pickle)
+    validationDataFromPickle = pandas.read_pickle(args.val_loader_pickle)
+    testingData_str = args.testing_loader_pickle
+    if testingData_str == "None":
+        testingDataFromPickle = None
+    else:
+        testingDataFromPickle = pandas.read_pickle(testingData_str)
+
+    training_loop_gans(
+        training_data=trainingDataFromPickle,
+        validation_data=validationDataFromPickle,
+        output_dir=args.outputDir,
+        device=args.device,
+        params=parameters,
+        testing_data=testingDataFromPickle,
+    )

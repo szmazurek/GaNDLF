@@ -1,0 +1,11 @@
+SubjectID,Channel_0,Label
+003,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/003/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/003/mask.png
+007,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/007/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/007/mask.png
+004,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/004/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/004/mask.png
+006,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/006/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/006/mask.png
+005,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/005/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/005/mask.png
+010,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/010/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/010/mask.png
+008,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/008/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/008/mask.png
+009,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/009/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/009/mask.png
+001,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/001/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/001/mask.png
+002,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/002/image.png,/home/szymon/code/GaNDLF/testing/data/2d_rad_segmentation/002/mask.png

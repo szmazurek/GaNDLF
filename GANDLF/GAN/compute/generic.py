@@ -1,8 +1,8 @@
 from pandas.util import hash_pandas_object
 
 from GANDLF.models import get_model
-from GANDLF.schedulers import get_scheduler_gan
-from GANDLF.optimizers import get_optimizers_gan
+from GANDLF.GAN.schedulers import get_scheduler_gan
+from GANDLF.GAN.optimizers import get_optimizers_gan
 from GANDLF.data import (
     get_train_loader,
     get_validation_loader,
