@@ -30,8 +30,8 @@ def step_gan(
         The input image stack according to requirements (can be latent
     vector for generator).
     label : torch.Tensor or None
-        The input label for the corresponding image label. For generator
-    step, this should be None.
+        The input label for the corresponding image label (fake or real).
+    When doing validation or inference, this can be None.
     params : dict
         The parameters passed by the user yaml.
     train : bool

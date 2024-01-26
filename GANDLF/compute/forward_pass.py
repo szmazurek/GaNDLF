@@ -78,7 +78,9 @@ def validate_network(
     if scheduler is None:
         current_output_dir = params["output_dir"]  # this is in inference mode
     else:  # this is useful for inference
-        current_output_dir = os.path.join(params["output_dir"], "output_" + mode)
+        current_output_dir = os.path.join(
+            params["output_dir"], "output_" + mode
+        )
 
     if not (is_inference):
         current_output_dir = os.path.join(current_output_dir, str(epoch))
@@ -99,7 +101,9 @@ def validate_network(
     if params["save_output"] or is_inference:
         if params["problem_type"] != "segmentation":
             outputToWrite = "Epoch,SubjectID,PredictedValue\n"
-            file_to_write = os.path.join(current_output_dir, "output_predictions.csv")
+            file_to_write = os.path.join(
+                current_output_dir, "output_predictions.csv"
+            )
             if os.path.exists(file_to_write):
                 file_to_write = os.path.join(
                     current_output_dir,
@@ -159,14 +163,21 @@ def validate_network(
         if (params["problem_type"] != "segmentation") and label_present:
             sampler = torchio.data.LabelSampler(params["patch_size"])
             tio_subject = torchio.Subject(subject_dict)
-            generator = sampler(tio_subject, num_patches=params["q_samples_per_volume"])
+            generator = sampler(
+                tio_subject, num_patches=params["q_samples_per_volume"]
+            )
             pred_output = 0
             for patch in generator:
                 image = torch.cat(
-                    [patch[key][torchio.DATA] for key in params["channel_keys"]], dim=0
+                    [
+                        patch[key][torchio.DATA]
+                        for key in params["channel_keys"]
+                    ],
+                    dim=0,
                 )
                 valuesToPredict = torch.cat(
-                    [patch["value_" + key] for key in params["value_keys"]], dim=0
+                    [patch["value_" + key] for key in params["value_keys"]],
+                    dim=0,
                 )
                 image = image.unsqueeze(0)
                 image = image.float().to(params["device"])
@@ -178,7 +189,11 @@ def validate_network(
                 elif params["model"]["type"] == "openvino":
                     pred_output += torch.from_numpy(
                         model(
-                            inputs={params["model"]["IO"][0][0]: image.cpu().numpy()}
+                            inputs={
+                                params["model"]["IO"][0][
+                                    0
+                                ]: image.cpu().numpy()
+                            }
                         )[params["model"]["IO"][1][0]]
                     )
                 else:
@@ -199,7 +214,10 @@ def validate_network(
                     + ","
                     + subject["subject_id"][0]
                     + ","
-                    + str(pred_output.cpu().max().item() / params["scaling_factor"])
+                    + str(
+                        pred_output.cpu().max().item()
+                        / params["scaling_factor"]
+                    )
                     + "\n"
                 )
             final_loss, final_metric = get_loss_and_metrics(
@@ -231,10 +249,14 @@ def validate_network(
                 params["patch_size"],
                 patch_overlap=params["inference_mechanism"]["patch_overlap"],
             )
-            patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=1)
+            patch_loader = torch.utils.data.DataLoader(
+                grid_sampler, batch_size=1
+            )
             aggregator = torchio.inference.GridAggregator(
                 grid_sampler,
-                overlap_mode=params["inference_mechanism"]["grid_aggregator_overlap"],
+                overlap_mode=params["inference_mechanism"][
+                    "grid_aggregator_overlap"
+                ],
             )
 
             if params["medcam_enabled"]:
@@ -327,9 +349,11 @@ def validate_network(
                     # perform postprocessing before reverse one-hot encoding here
                     for postprocessor in params["data_postprocessing"]:
                         for _class in range(0, params["model"]["num_classes"]):
-                            pred_mask[0, _class, ...] = global_postprocessing_dict[
-                                postprocessor
-                            ](pred_mask[0, _class, ...], params)
+                            pred_mask[
+                                0, _class, ...
+                            ] = global_postprocessing_dict[postprocessor](
+                                pred_mask[0, _class, ...], params
+                            )
                     # '0' because validation/testing dataloader always has batch size of '1'
                     pred_mask = reverse_one_hot(
                         pred_mask[0], params["model"]["class_list"]
@@ -345,7 +369,9 @@ def validate_network(
                         )
 
                     # if jpg detected, convert to 8-bit arrays
-                    ext = get_filename_extension_sanitized(subject["1"]["path"][0])
+                    ext = get_filename_extension_sanitized(
+                        subject["1"]["path"][0]
+                    )
                     if ext in [
                         ".jpg",
                         ".jpeg",
@@ -357,7 +383,9 @@ def validate_network(
                     if image.shape[-1] > 1:
                         result_image = sitk.GetImageFromArray(pred_mask)
                     else:
-                        result_image = sitk.GetImageFromArray(pred_mask.squeeze(0))
+                        result_image = sitk.GetImageFromArray(
+                            pred_mask.squeeze(0)
+                        )
                     result_image.CopyInformation(img_for_metadata)
 
                     # this handles cases that need resampling/resizing
@@ -375,7 +403,9 @@ def validate_network(
                     )
                     os.makedirs(
                         os.path.join(
-                            current_output_dir, "testing", subject["subject_id"][0]
+                            current_output_dir,
+                            "testing",
+                            subject["subject_id"][0],
                         ),
                         exist_ok=True,
                     )
@@ -425,7 +455,9 @@ def validate_network(
             if label_ground_truth is not None:
                 # this is for RGB label
                 if label_ground_truth.shape[0] == 3:
-                    label_ground_truth = label_ground_truth[0, ...].unsqueeze(0)
+                    label_ground_truth = label_ground_truth[0, ...].unsqueeze(
+                        0
+                    )
                 # we always want the ground truth to be in the same format as the prediction
                 label_ground_truth = label_ground_truth.unsqueeze(0)
                 if label_ground_truth.shape[-1] == 1:
@@ -445,7 +477,7 @@ def validate_network(
                         flush=True,
                     )
 
-                # # Non network validing related
+                #  Non network validing related
                 # loss.cpu().data.item()
                 total_epoch_valid_loss += final_loss.cpu().item()
                 for metric in final_metric.keys():
@@ -459,7 +491,9 @@ def validate_network(
                                 final_metric[metric]
                             )
                     else:
-                        total_epoch_valid_metric[metric] += final_metric[metric]
+                        total_epoch_valid_metric[metric] += final_metric[
+                            metric
+                        ]
 
         if label_ground_truth is not None:
             if params["verbose"]:
@@ -472,16 +506,23 @@ def validate_network(
                         total_epoch_valid_loss / (batch_idx + 1),
                     )
                     for metric in params["metrics"]:
-                        if isinstance(total_epoch_valid_metric[metric], np.ndarray):
+                        if isinstance(
+                            total_epoch_valid_metric[metric], np.ndarray
+                        ):
                             to_print = (
-                                total_epoch_valid_metric[metric] / (batch_idx + 1)
+                                total_epoch_valid_metric[metric]
+                                / (batch_idx + 1)
                             ).tolist()
                         else:
                             to_print = total_epoch_valid_metric[metric] / (
                                 batch_idx + 1
                             )
                         print(
-                            "Half-Epoch Average " + mode + " " + metric + " : ",
+                            "Half-Epoch Average "
+                            + mode
+                            + " "
+                            + metric
+                            + " : ",
                             to_print,
                         )
 
@@ -490,8 +531,12 @@ def validate_network(
         params["medcam_enabled"] = False
 
     if label_ground_truth is not None:
-        average_epoch_valid_loss = total_epoch_valid_loss / len(valid_dataloader)
-        print("     Epoch Final   " + mode + " loss : ", average_epoch_valid_loss)
+        average_epoch_valid_loss = total_epoch_valid_loss / len(
+            valid_dataloader
+        )
+        print(
+            "     Epoch Final   " + mode + " loss : ", average_epoch_valid_loss
+        )
         # get overall stats for classification
         if calculate_overall_metrics:
             average_epoch_valid_metric = overall_stats(
@@ -534,7 +579,8 @@ def validate_network(
             logits_file = os.path.join(current_fold_dir, "logits.csv")
             if os.path.isfile(logits_file):
                 logits_file = os.path.join(
-                    current_fold_dir, "logits_" + get_unique_timestamp() + ".csv"
+                    current_fold_dir,
+                    "logits_" + get_unique_timestamp() + ".csv",
                 )
             logits_df.to_csv(logits_file, index=False, sep=",")
 

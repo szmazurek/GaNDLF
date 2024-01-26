@@ -120,7 +120,7 @@ def train_network_gan(
             params["subject_spacing"] = subject["spacing"]
         else:
             params["subject_spacing"] = None
-        loss_disc_real, calculated_metrics, output_disc_real, _ = step_gan(
+        loss_disc_real, _, output_disc_real, _ = step_gan(
             model, image_real, label_real, params, secondary_images=None
         )
         nan_loss = torch.isnan(loss_disc_real)
@@ -162,7 +162,7 @@ def train_network_gan(
         )
         label_fake = label_real.fill_(0)
         fake_images = model.generator(latent_vector)
-        loss_disc_fake, calculated_metrics, output_disc_fake, _ = step_gan(
+        loss_disc_fake, _, output_disc_fake, _ = step_gan(
             model,
             fake_images,
             label_fake,
@@ -203,6 +203,7 @@ def train_network_gan(
         ### GENERATOR STEP ###
         optimizer_g.zero_grad()
         label_fake = label_real.fill_(1)
+        # TODO where do I use metrics?
         loss_gen, calculated_metrics, output_gen_step, _ = step_gan(
             model, fake_images, label_fake, params, secondary_images=image_real
         )
@@ -363,6 +364,7 @@ def training_loop_gans(
     )
     # save the initial model
     if not os.path.exists(model_paths["initial"]):
+        # TODO check if the saving is indeed correct
         save_model(
             {
                 "epoch": 0,
@@ -413,7 +415,9 @@ def training_loop_gans(
     # datetime object containing current date and time
     print("Initializing training at :", get_date_time(), flush=True)
 
-    ## TODO add metrics part
+    # TODO is this correct? We do not use here the
+    # calculate_overall_metrics ever, so it is skipped
+    metrics_log = params["metrics"].copy()
 
     # Setup a few loggers for tracking
     train_logger = LoggerGAN(
