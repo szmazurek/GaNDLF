@@ -104,8 +104,8 @@ def train_network_gan(
         current_batch_size = image_real.shape[0]
 
         label_real = torch.full(
-            current_batch_size,
-            1,
+            size=(current_batch_size,),
+            fill_value=1,
             dtype=torch.float,
             device=params["device"],
         )

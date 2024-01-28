@@ -3,2192 +3,6 @@ device = 'cpu'
     def test_train_segmentation_rad_2d(device):
         print("03: Starting 2D Rad segmentation tests")
         # read and parse csv
-        parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManager(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/training_manager.py:252: in TrainingManager
-    training_loop(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/compute/training_loop.py:461: in training_loop
-    epoch_train_loss, epoch_train_metric = train_network(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/compute/training_loop.py:129: in train_network
-    loss, calculated_metrics, output, _ = step(model, image, label, params)
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/compute/step.py:81: in step
-    output = model(image)
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1518: in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-self = DCGAN(
-  (generator): _GneratorDCGAN(
-    (feature_extractor): Sequential(
-      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
-      (linear2): Linear(in_features=128, out_features=1, bias=True)
-      (sigmoid): Sigmoid()
-    )
-  )
-)
-args = (tensor([[[[-0.0676, -0.0676, -0.1012,  ...,  0.7711,  0.7040,  0.8046],
-          [-0.0676, -0.1012, -0.1347,  ...,  ...-0.5708,  ...,  0.3014,  0.3685,  0.4356],
-          [-1.6779, -1.6779, -1.2418,  ...,  0.2343,  0.2679,  0.3350]]]]),)
-kwargs = {}
-forward_call = <bound method DCGAN.forward of DCGAN(
-  (generator): _GneratorDCGAN(
-    (feature_extractor): Sequential(
-      (conv1...place=True)
-      (linear2): Linear(in_features=128, out_features=1, bias=True)
-      (sigmoid): Sigmoid()
-    )
-  )
-)>
-
-    def _call_impl(self, *args, **kwargs):
-        forward_call = (self._slow_forward if torch._C._get_tracing_state() else self.forward)
-        # If we don't have any hooks, we want to skip the rest of the logic in
-        # this function, and just call forward.
-        if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
-                or _global_backward_pre_hooks or _global_backward_hooks
-                or _global_forward_hooks or _global_forward_pre_hooks):
->           return forward_call(*args, **kwargs)
-E           TypeError: DCGAN.forward() takes 1 positional argument but 2 were given
-
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1527: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def get_optimizers_gan(params):
-        """
-        Returns an instances of the specified optimizer from the PyTorch `torch.optim` module
-        for both the generator and discriminator.
-        Args:
-            params (dict): A dictionary containing the input parameters for the optimizer.
-        Returns:
-            optimizer_gen (torch.optim.Optimizer): An instance of the specified optimizer for generator.
-            optimizer_disc (torch.optim.Optimizer): An instance of the specified optimizer for discriminator.
-        """
->       optimizer_gen_type = params["optimizer_gen"]["type"]
-E       KeyError: 'optimizer_gen'
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:40: KeyError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def get_optimizers_gan(params):
-        """
-        Returns an instances of the specified optimizer from the PyTorch `torch.optim` module
-        for both the generator and discriminator.
-        Args:
-            params (dict): A dictionary containing the input parameters for the optimizer.
-        Returns:
-            optimizer_gen (torch.optim.Optimizer): An instance of the specified optimizer for generator.
-            optimizer_disc (torch.optim.Optimizer): An instance of the specified optimizer for discriminator.
-        """
->       optimizer_gen_type = params["optimizer_gen"]["type"]
-E       TypeError: string indices must be integers
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:40: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def get_optimizers_gan(params):
-        """
-        Returns an instances of the specified optimizer from the PyTorch `torch.optim` module
-        for both the generator and discriminator.
-        Args:
-            params (dict): A dictionary containing the input parameters for the optimizer.
-        Returns:
-            optimizer_gen (torch.optim.Optimizer): An instance of the specified optimizer for generator.
-            optimizer_disc (torch.optim.Optimizer): An instance of the specified optimizer for discriminator.
-        """
->       optimizer_gen_type = params["optimizer_gen"]["type"]
-E       TypeError: string indices must be integers
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:40: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def get_optimizers_gan(params):
-        """
-        Returns an instances of the specified optimizer from the PyTorch `torch.optim` module
-        for both the generator and discriminator.
-        Args:
-            params (dict): A dictionary containing the input parameters for the optimizer.
-        Returns:
-            optimizer_gen (torch.optim.Optimizer): An instance of the specified optimizer for generator.
-            optimizer_disc (torch.optim.Optimizer): An instance of the specified optimizer for discriminator.
-        """
->       optimizer_gen_type = params["optimizer_gen"]["type"]
-E       TypeError: string indices must be integers
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:40: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
->       parameters = parseConfig(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-E       NameError: name 'parseConfig' is not defined
-
-GANDLF/GAN/testing/test_gan.py:56: NameError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
->       parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-
-GANDLF/GAN/testing/test_gan.py:56: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-config_file_path = '/home/szymon/code/GaNDLF/GANDLF/GAN/testing/config_generation.yaml', version_check_flag = False
-
-    def parseConfigGAN(config_file_path, version_check_flag=True):
-        """
-        This function parses the configuration file and returns a dictionary of parameters.
-    
-        Args:
-            config_file_path (Union[str, dict]): The filename of the configuration file.
-            version_check_flag (bool, optional): Whether to check the version in configuration file. Defaults to True.
-    
-        Returns:
-            dict: The parameter dictionary.
-        """
-        params = config_file_path
-        if not isinstance(config_file_path, dict):
-            params = yaml.safe_load(open(config_file_path, "r"))
-    
-        if version_check_flag:  # this is only to be used for testing
-            assert (
-                "version" in params
-            ), "The 'version' key needs to be defined in config with 'minimum' and 'maximum' fields to determine the compatibility of configuration with code base"
-            version_check(
-                params["version"],
-                version_to_check=pkg_resources.require("GANDLF")[0].version,
-            )
-    
-        if "patch_size" in params:
-            # duplicate patch size if it is an int or float
-            if isinstance(params["patch_size"], int) or isinstance(
-                params["patch_size"], float
-            ):
-                params["patch_size"] = [params["patch_size"]]
-            # in case someone decides to pass a single value list
-            if len(params["patch_size"]) == 1:
-                actual_patch_size = []
-                for _ in range(params["model"]["dimension"]):
-                    actual_patch_size.append(params["patch_size"][0])
-                params["patch_size"] = actual_patch_size
-    
-            # parse patch size as needed for computations
-            if len(params["patch_size"]) == 2:  # 2d check
-                # ensuring same size during torchio processing
-                params["patch_size"].append(1)
-                if "dimension" not in params["model"]:
-                    params["model"]["dimension"] = 2
-            elif len(params["patch_size"]) == 3:  # 2d check
-                if "dimension" not in params["model"]:
-                    params["model"]["dimension"] = 3
-        assert (
-            "patch_size" in params
-        ), "Patch size needs to be defined in the config file"
-    
-        if "resize" in params:
-            print(
-                "WARNING: 'resize' should be defined under 'data_processing', this will be skipped",
-                file=sys.stderr,
-            )
-    
-        assert (
-            "modality" in params
-        ), "'modality' needs to be defined in the config file"
-        params["modality"] = params["modality"].lower()
-        assert params["modality"] in [
-            "rad",
-            "histo",
-            "path",
-        ], "Modality should be either 'rad' or 'path'"
-    
-        assert (
-            "loss_function" in params
-        ), "'loss_function' needs to be defined in the config file"
-        if "loss_function" in params:
-            # check if user has passed a dict
-            if isinstance(params["loss_function"], dict):  # if this is a dict
-                if (
-                    len(params["loss_function"]) > 0
-                ):  # only proceed if something is defined
-                    for key in params["loss_function"]:  # iterate through all keys
-                        if key == "mse":
-                            if (params["loss_function"][key] is None) or not (
-                                "reduction" in params["loss_function"][key]
-                            ):
-                                params["loss_function"][key] = {}
-                                params["loss_function"][key]["reduction"] = "mean"
-                        else:
-                            # use simple string for other functions - can be extended with parameters, if needed
-                            params["loss_function"] = key
-            else:
-                # check if user has passed a single string
-                if params["loss_function"] == "mse":
-                    params["loss_function"] = {}
-                    params["loss_function"]["mse"] = {}
-                    params["loss_function"]["mse"]["reduction"] = "mean"
-                elif params["loss_function"] == "focal":
-                    params["loss_function"] = {}
-                    params["loss_function"]["focal"] = {}
-                    params["loss_function"]["focal"]["gamma"] = 2.0
-                    params["loss_function"]["focal"]["size_average"] = True
-    
-        assert (
-            "metrics" in params
-        ), "'metrics' needs to be defined in the config file"
-        if "metrics" in params:
-            if not isinstance(params["metrics"], dict):
-                temp_dict = {}
-            else:
-                temp_dict = params["metrics"]
-    
-            # initialize metrics dict
-            for metric in params["metrics"]:
-                # assigning a new variable because some metrics can be dicts, and we want to get the first key
-                comparison_string = metric
-                if isinstance(metric, dict):
-                    comparison_string = list(metric.keys())[0]
-                # these metrics always need to be dicts
-                if comparison_string in [
-                    "accuracy",
-                    "f1",
-                    "precision",
-                    "recall",
-                    "specificity",
-                    "iou",
-                ]:
-                    if not isinstance(metric, dict):
-                        temp_dict[metric] = {}
-                    else:
-                        temp_dict[comparison_string] = metric
-                elif not isinstance(metric, dict):
-                    temp_dict[metric] = None
-    
-                # special case for accuracy, precision, recall, and specificity; which could be dicts
-                ## need to find a better way to do this
-                if any(
-                    _ in comparison_string
-                    for _ in [
-                        "precision",
-                        "recall",
-                        "specificity",
-                        "accuracy",
-                        "f1",
-                    ]
-                ):
-                    if comparison_string != "classification_accuracy":
-                        temp_dict[comparison_string] = initialize_key(
-                            temp_dict[comparison_string], "average", "weighted"
-                        )
-                        temp_dict[comparison_string] = initialize_key(
-                            temp_dict[comparison_string], "multi_class", True
-                        )
-                        temp_dict[comparison_string] = initialize_key(
-                            temp_dict[comparison_string],
-                            "mdmc_average",
-                            "samplewise",
-                        )
-                        temp_dict[comparison_string] = initialize_key(
-                            temp_dict[comparison_string], "threshold", 0.5
-                        )
-                        if comparison_string == "accuracy":
-                            temp_dict[comparison_string] = initialize_key(
-                                temp_dict[comparison_string],
-                                "subset_accuracy",
-                                False,
-                            )
-                elif "iou" in comparison_string:
-                    temp_dict["iou"] = initialize_key(
-                        temp_dict["iou"], "reduction", "elementwise_mean"
-                    )
-                    temp_dict["iou"] = initialize_key(
-                        temp_dict["iou"], "threshold", 0.5
-                    )
-                elif comparison_string in surface_distance_ids:
-                    temp_dict[comparison_string] = initialize_key(
-                        temp_dict[comparison_string], "connectivity", 1
-                    )
-                    temp_dict[comparison_string] = initialize_key(
-                        temp_dict[comparison_string], "threshold", None
-                    )
-    
-            params["metrics"] = temp_dict
-    
-        # this is NOT a required parameter - a user should be able to train with NO augmentations
-        params = initialize_key(params, "data_augmentation", {})
-        # for all others, ensure probability is present
-        params["data_augmentation"]["default_probability"] = params[
-            "data_augmentation"
-        ].get("default_probability", 0.5)
-    
-        if not (params["data_augmentation"] is None):
-            if (
-                len(params["data_augmentation"]) > 0
-            ):  # only when augmentations are defined
-                # special case for random swapping and elastic transformations - which takes a patch size for computation
-                for key in ["swap", "elastic"]:
-                    if key in params["data_augmentation"]:
-                        params["data_augmentation"][key] = initialize_key(
-                            params["data_augmentation"][key],
-                            "patch_size",
-                            np.round(np.array(params["patch_size"]) / 10)
-                            .astype("int")
-                            .tolist(),
-                        )
-    
-                # special case for swap default initialization
-                if "swap" in params["data_augmentation"]:
-                    params["data_augmentation"]["swap"] = initialize_key(
-                        params["data_augmentation"]["swap"], "num_iterations", 100
-                    )
-    
-                # special case for affine default initialization
-                if "affine" in params["data_augmentation"]:
-                    params["data_augmentation"]["affine"] = initialize_key(
-                        params["data_augmentation"]["affine"], "scales", 0.1
-                    )
-                    params["data_augmentation"]["affine"] = initialize_key(
-                        params["data_augmentation"]["affine"], "degrees", 15
-                    )
-                    params["data_augmentation"]["affine"] = initialize_key(
-                        params["data_augmentation"]["affine"], "translation", 2
-                    )
-    
-                if "motion" in params["data_augmentation"]:
-                    params["data_augmentation"]["motion"] = initialize_key(
-                        params["data_augmentation"]["motion"], "num_transforms", 2
-                    )
-                    params["data_augmentation"]["motion"] = initialize_key(
-                        params["data_augmentation"]["motion"], "degrees", 15
-                    )
-                    params["data_augmentation"]["motion"] = initialize_key(
-                        params["data_augmentation"]["motion"], "translation", 2
-                    )
-                    params["data_augmentation"]["motion"] = initialize_key(
-                        params["data_augmentation"]["motion"],
-                        "interpolation",
-                        "linear",
-                    )
-    
-                # special case for random blur/noise - which takes a std-dev range
-                for std_aug in ["blur", "noise_var"]:
-                    if std_aug in params["data_augmentation"]:
-                        params["data_augmentation"][std_aug] = initialize_key(
-                            params["data_augmentation"][std_aug], "std", None
-                        )
-                for std_aug in ["noise"]:
-                    if std_aug in params["data_augmentation"]:
-                        params["data_augmentation"][std_aug] = initialize_key(
-                            params["data_augmentation"][std_aug], "std", [0, 1]
-                        )
-    
-                # special case for random noise - which takes a mean range
-                for mean_aug in ["noise", "noise_var"]:
-                    if mean_aug in params["data_augmentation"]:
-                        params["data_augmentation"][mean_aug] = initialize_key(
-                            params["data_augmentation"][mean_aug], "mean", 0
-                        )
-    
-                # special case for augmentations that need axis defined
-                for axis_aug in ["flip", "anisotropic", "rotate_90", "rotate_180"]:
-                    if axis_aug in params["data_augmentation"]:
-                        params["data_augmentation"][axis_aug] = initialize_key(
-                            params["data_augmentation"][axis_aug],
-                            "axis",
-                            [0, 1, 2],
-                        )
-    
-                # special case for colorjitter
-                if "colorjitter" in params["data_augmentation"]:
-                    params["data_augmentation"] = initialize_key(
-                        params["data_augmentation"], "colorjitter", {}
-                    )
-                    for key in ["brightness", "contrast", "saturation"]:
-                        params["data_augmentation"][
-                            "colorjitter"
-                        ] = initialize_key(
-                            params["data_augmentation"]["colorjitter"], key, [0, 1]
-                        )
-                    params["data_augmentation"]["colorjitter"] = initialize_key(
-                        params["data_augmentation"]["colorjitter"],
-                        "hue",
-                        [-0.5, 0.5],
-                    )
-    
-                # Added HED augmentation in gandlf
-                hed_augmentation_types = [
-                    "hed_transform",
-                    # "hed_transform_light",
-                    # "hed_transform_heavy",
-                ]
-                for augmentation_type in hed_augmentation_types:
-                    if augmentation_type in params["data_augmentation"]:
-                        params["data_augmentation"] = initialize_key(
-                            params["data_augmentation"], "hed_transform", {}
-                        )
-                        ranges = [
-                            "haematoxylin_bias_range",
-                            "eosin_bias_range",
-                            "dab_bias_range",
-                            "haematoxylin_sigma_range",
-                            "eosin_sigma_range",
-                            "dab_sigma_range",
-                        ]
-    
-                        default_range = (
-                            [-0.1, 0.1]
-                            if augmentation_type == "hed_transform"
-                            else [-0.03, 0.03]
-                            if augmentation_type == "hed_transform_light"
-                            else [-0.95, 0.95]
-                        )
-    
-                        for key in ranges:
-                            params["data_augmentation"][
-                                "hed_transform"
-                            ] = initialize_key(
-                                params["data_augmentation"]["hed_transform"],
-                                key,
-                                default_range,
-                            )
-    
-                        params["data_augmentation"][
-                            "hed_transform"
-                        ] = initialize_key(
-                            params["data_augmentation"]["hed_transform"],
-                            "cutoff_range",
-                            [0, 1],
-                        )
-    
-                # special case for anisotropic
-                if "anisotropic" in params["data_augmentation"]:
-                    if not (
-                        "downsampling"
-                        in params["data_augmentation"]["anisotropic"]
-                    ):
-                        default_downsampling = 1.5
-                    else:
-                        default_downsampling = params["data_augmentation"][
-                            "anisotropic"
-                        ]["downsampling"]
-    
-                    initialize_downsampling = False
-                    if isinstance(default_downsampling, list):
-                        if len(default_downsampling) != 2:
-                            initialize_downsampling = True
-                            print(
-                                "WARNING: 'anisotropic' augmentation needs to be either a single number of a list of 2 numbers: https://torchio.readthedocs.io/transforms/augmentation.html?highlight=randomswap#torchio.transforms.RandomAnisotropy.",
-                                file=sys.stderr,
-                            )
-                            default_downsampling = default_downsampling[0]  # only
-                    else:
-                        initialize_downsampling = True
-    
-                    if initialize_downsampling:
-                        if default_downsampling < 1:
-                            print(
-                                "WARNING: 'anisotropic' augmentation needs the 'downsampling' parameter to be greater than 1, defaulting to 1.5.",
-                                file=sys.stderr,
-                            )
-                            # default
-                        params["data_augmentation"]["anisotropic"][
-                            "downsampling"
-                        ] = 1.5
-    
-                for key in params["data_augmentation"]:
-                    if key != "default_probability":
-                        params["data_augmentation"][key] = initialize_key(
-                            params["data_augmentation"][key],
-                            "probability",
-                            params["data_augmentation"]["default_probability"],
-                        )
-    
-        # this is NOT a required parameter - a user should be able to train with NO built-in pre-processing
-        params = initialize_key(params, "data_preprocessing", {})
-        if not (params["data_preprocessing"] is None):
-            # perform this only when pre-processing is defined
-            if len(params["data_preprocessing"]) > 0:
-                thresholdOrClip = False
-                # this can be extended, as required
-                thresholdOrClipDict = [
-                    "threshold",
-                    "clip",
-                    "clamp",
-                ]
-    
-                resize_requested = False
-                temp_dict = deepcopy(params["data_preprocessing"])
-                for key in params["data_preprocessing"]:
-                    if key in [
-                        "resize",
-                        "resize_image",
-                        "resize_images",
-                        "resize_patch",
-                    ]:
-                        resize_requested = True
-    
-                    if key in ["resample_min", "resample_minimum"]:
-                        if "resolution" in params["data_preprocessing"][key]:
-                            resize_requested = True
-                            resolution_temp = np.array(
-                                params["data_preprocessing"][key]["resolution"]
-                            )
-                            if resolution_temp.size == 1:
-                                temp_dict[key]["resolution"] = np.array(
-                                    [resolution_temp, resolution_temp]
-                                ).tolist()
-                        else:
-                            temp_dict.pop(key)
-    
-                params["data_preprocessing"] = temp_dict
-    
-                if resize_requested and "resample" in params["data_preprocessing"]:
-                    for key in [
-                        "resize",
-                        "resize_image",
-                        "resize_images",
-                        "resize_patch",
-                    ]:
-                        if key in params["data_preprocessing"]:
-                            params["data_preprocessing"].pop(key)
-    
-                    print(
-                        "WARNING: Different 'resize' operations are ignored as 'resample' is defined under 'data_processing'",
-                        file=sys.stderr,
-                    )
-    
-                # iterate through all keys
-                for key in params[
-                    "data_preprocessing"
-                ]:  # iterate through all keys
-                    # for threshold or clip, ensure min and max are defined
-                    if not thresholdOrClip:
-                        if key in thresholdOrClipDict:
-                            thresholdOrClip = True  # we only allow one of threshold or clip to occur and not both
-                            # initialize if nothing is present
-                            if not (
-                                isinstance(params["data_preprocessing"][key], dict)
-                            ):
-                                params["data_preprocessing"][key] = {}
-    
-                            # if one of the required parameters is not present, initialize with lowest/highest possible values
-                            # this ensures the absence of a field doesn't affect processing
-                            if not "min" in params["data_preprocessing"][key]:
-                                params["data_preprocessing"][key][
-                                    "min"
-                                ] = sys.float_info.min
-                            if not "max" in params["data_preprocessing"][key]:
-                                params["data_preprocessing"][key][
-                                    "max"
-                                ] = sys.float_info.max
-                    elif key in thresholdOrClipDict:
-                        sys.exit("Use only 'threshold' or 'clip', not both")
-    
-                    if key == "histogram_matching":
-                        if params["data_preprocessing"][key] is not False:
-                            if not (
-                                isinstance(params["data_preprocessing"][key], dict)
-                            ):
-                                params["data_preprocessing"][key] = {}
-    
-                    if key == "histogram_equalization":
-                        if params["data_preprocessing"][key] is not False:
-                            # if histogram equalization is enabled, call histogram_matching
-                            params["data_preprocessing"]["histogram_matching"] = {}
-    
-                    if key == "adaptive_histogram_equalization":
-                        if params["data_preprocessing"][key] is not False:
-                            # if histogram equalization is enabled, call histogram_matching
-                            params["data_preprocessing"]["histogram_matching"] = {
-                                "target": "adaptive"
-                            }
-    
-        # this is NOT a required parameter - a user should be able to train with NO built-in post-processing
-        params = initialize_key(params, "data_postprocessing", {})
-        params = initialize_key(
-            params, "data_postprocessing_after_reverse_one_hot_encoding", {}
-        )
-        temp_dict = deepcopy(params["data_postprocessing"])
-        for key in temp_dict:
-            if key in postprocessing_after_reverse_one_hot_encoding:
-                params["data_postprocessing_after_reverse_one_hot_encoding"][
-                    key
-                ] = params["data_postprocessing"][key]
-                params["data_postprocessing"].pop(key)
-    
-        if "model" in params:
-            assert isinstance(
-                params["model"], dict
-            ), "The 'model' parameter needs to be populated as a dictionary"
-            assert (
-                len(params["model"]) > 0
-            ), "The 'model' parameter needs to be populated as a dictionary and should have all properties present"
-            assert (
-                "architecture" in params["model"]
-            ), "The 'model' parameter needs 'architecture' to be defined"
-            assert (
-                "final_layer" in params["model"]
-            ), "The 'model' parameter needs 'final_layer' to be defined"
-            assert (
-                "dimension" in params["model"]
-            ), "The 'model' parameter needs 'dimension' to be defined"
-    
-            if "amp" in params["model"]:
-                pass
-            else:
-                print("NOT using Mixed Precision Training")
-                params["model"]["amp"] = False
-    
-            if "norm_type" in params["model"]:
-                if (
-                    params["model"]["norm_type"] == None
-                    or params["model"]["norm_type"].lower() == "none"
-                ):
-                    if not ("vgg" in params["model"]["architecture"]):
-                        raise ValueError(
-                            "Normalization type cannot be 'None' for non-VGG architectures"
-                        )
-            else:
-                print("WARNING: Initializing 'norm_type' as 'batch'", flush=True)
-                params["model"]["norm_type"] = "batch"
-    
-            if not ("base_filters" in params["model"]):
-                base_filters = 32
-                params["model"]["base_filters"] = base_filters
-                print("Using default 'base_filters' in 'model': ", base_filters)
-            if not ("class_list" in params["model"]):
-                params["model"][
-                    "class_list"
-                ] = []  # ensure that this is initialized
-            if not ("ignore_label_validation" in params["model"]):
-                params["model"]["ignore_label_validation"] = None
-            if "batch_norm" in params["model"]:
-                print(
-                    "WARNING: 'batch_norm' is no longer supported, please use 'norm_type' in 'model' instead",
-                    flush=True,
-                )
-            params["model"]["print_summary"] = params["model"].get(
-                "print_summary", True
-            )
-    
-            channel_keys_to_check = ["n_channels", "channels", "model_channels"]
-            for key in channel_keys_to_check:
-                if key in params["model"]:
-                    params["model"]["num_channels"] = params["model"][key]
-                    break
-    
-            # initialize model type for processing: if not defined, default to torch
-            if not ("type" in params["model"]):
-                params["model"]["type"] = "torch"
-    
-            # initialize openvino model data type for processing: if not defined, default to FP32
-            if not ("data_type" in params["model"]):
-                params["model"]["data_type"] = "FP32"
-    
-            # set default save strategy for model
-            if not ("save_at_every_epoch" in params["model"]):
-                params["model"]["save_at_every_epoch"] = False
-    
-            if params["model"]["save_at_every_epoch"]:
-                print(
-                    "WARNING: 'save_at_every_epoch' will result in TREMENDOUS storage usage; use at your own risk."
-                )
-    
-        if isinstance(params["model"]["class_list"], str):
-            if ("||" in params["model"]["class_list"]) or (
-                "&&" in params["model"]["class_list"]
-            ):
-                # special case for multi-class computation - this needs to be handled during one-hot encoding mask construction
-                print(
-                    "WARNING: This is a special case for multi-class computation, where different labels are processed together, `reverse_one_hot` will need mapping information to work correctly"
-                )
-                temp_classList = params["model"]["class_list"]
-                # we don't need the brackets
-                temp_classList = temp_classList.replace("[", "")
-                temp_classList = temp_classList.replace("]", "")
-                params["model"]["class_list"] = temp_classList.split(",")
-            else:
-                try:
-                    params["model"]["class_list"] = ast.literal_eval(
-                        params["model"]["class_list"]
-                    )
-                except AssertionError:
-                    raise AssertionError(
-                        "Could not evaluate the 'class_list' in 'model'"
-                    )
-    
-        assert (
-            "nested_training" in params
-        ), "The parameter 'nested_training' needs to be defined"
-        # initialize defaults for nested training
-        params["nested_training"]["testing"] = params["nested_training"].get(
-            "testing", -5
-        )
-        params["nested_training"]["validation"] = params["nested_training"].get(
-            "validation", -5
-        )
-    
-        parallel_compute_command = ""
-        if "parallel_compute_command" in params:
-            parallel_compute_command = params["parallel_compute_command"]
-            parallel_compute_command = parallel_compute_command.replace("'", "")
-            parallel_compute_command = parallel_compute_command.replace('"', "")
-        params["parallel_compute_command"] = parallel_compute_command
-    
-        if "opt_g" in params:
-            print("DeprecationWarning: 'opt' has been superseded by 'optimizer'")
-            params["optimizer_g"] = params["opt_g"]
-        if "opt_d" in params:
-            print("DeprecationWarning: 'opt' has been superseded by 'optimizer'")
-            params["optimizer_d"] = params["opt_d"]
-    
-        # define defaults
-        for current_parameter in parameter_defaults:
-            params = initialize_parameter(
-                params,
-                current_parameter,
-                parameter_defaults[current_parameter],
-                True,
-            )
-    
-        for current_parameter in parameter_defaults_string:
-            params = initialize_parameter(
-                params,
-                current_parameter,
-                parameter_defaults_string[current_parameter],
-                False,
-            )
-    
-        # ensure that the scheduler and optimizer are dicts
-        if isinstance(params["scheduler_g"], str):
-            temp_dict = {}
-            temp_dict["type"] = params["scheduler_g"]
-            params["scheduler_g"] = temp_dict
-        if isinstance(params["scheduler_d"], str):
-            temp_dict = {}
-            temp_dict["type"] = params["scheduler_d"]
-            params["scheduler_d"] = temp_dict
-    
-        if not ("step_size" in params["scheduler_g"]):
-            params["scheduler_g"]["step_size"] = params["learning_rate_g"] / 5.0
-            print(
-                "WARNING: Setting default generator scheduler step_size to:",
->               params["scheduler_g"]["step_size_g"],
-            )
-E           KeyError: 'step_size_g'
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/parseConfigGAN.py:747: KeyError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def get_optimizers_gan(params):
-        """
-        Returns an instances of the specified optimizer from the PyTorch `torch.optim` module
-        for both the generator and discriminator.
-        Args:
-            params (dict): A dictionary containing the input parameters for the optimizer.
-        Returns:
-            optimizer_gen (torch.optim.Optimizer): An instance of the specified optimizer for generator.
-            optimizer_disc (torch.optim.Optimizer): An instance of the specified optimizer for discriminator.
-        """
->       optimizer_gen_type = params["optimizer_gen"]["type"]
-E       KeyError: 'optimizer_gen'
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:40: KeyError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:80: in create_pytorch_objects_gan
-    optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/optimizers/__init__.py:45: in get_optimizers_gan
-    optimizer_gen = optimizer_gen_function(params)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-parameters = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}, opt_type = 'normal'
-
-    def adam(parameters, opt_type="normal"):
-        """
-        Creates an Adam or AdamW optimizer from the PyTorch `torch.optim` module using the input parameters.
-    
-        Args:
-            parameters (dict): A dictionary containing the input parameters for the optimizer.
-            opt_type (str): A string indicating the type of optimizer to create (either "normal" for Adam or "AdamW" for AdamW).
-    
-        Returns:
-            optimizer (torch.optim.Adam or torch.optim.AdamW): An Adam or AdamW optimizer.
-    
-        """
-        # Determine which optimizer to create based on opt_type
-        if opt_type == "normal":
-            optimizer_fn = Adam
-        elif opt_type == "AdamW":
-            optimizer_fn = AdamW
-        else:
-            raise ValueError(f"Invalid optimizer type: {opt_type}")
-    
-        # Create the optimizer using the input parameters
-        return optimizer_fn(
-            parameters["model_parameters"],
-            lr=parameters.get("learning_rate"),
->           betas=parameters["optimizer"].get("betas", (0.9, 0.999)),
-            weight_decay=parameters["optimizer"].get("weight_decay", 0.00005),
-            eps=parameters["optimizer"].get("eps", 1e-8),
-            amsgrad=parameters["optimizer"].get("amsgrad", False),
-        )
-E       AttributeError: 'str' object has no attribute 'get'
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/optimizers/wrap_torch.py:86: AttributeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-parameters = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-train_csv =    SubjectID                                          Channel_0                                              Label
-2  ...s...
-7          9  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-val_csv =    0                                                  1                                                  2
-0  1  /home.../2d_rad_s...
-1  3  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-device = 'cpu'
-
-    def create_pytorch_objects_gan(
-        parameters, train_csv=None, val_csv=None, device="cpu"
-    ):
-        """
-        This function creates all the PyTorch objects needed for training.
-    
-        Args:
-            parameters (dict): The parameters dictionary.
-            train_csv (str): The path to the training CSV file.
-            val_csv (str): The path to the validation CSV file.
-            device (str): The device to perform computations on.
-    
-        Returns:
-            model (torch.nn.Module): The model to use for training.
-            optimizer_gen (Optimizer): The optimizer to use for training generator.
-            optimizer_disc (Optimizer): The optimizer to use for training discriminator.
-            train_loader (torch.utils.data.DataLoader): The training data loader.
-            val_loader (torch.utils.data.DataLoader): The validation data loader.
-            scheduler_gen (object): The scheduler to use for training generator.
-            scheduler_disc (object): The scheduler to use for training discriminator.
-            parameters (dict): The updated parameters dictionary.
-        """
-    
-        # initialize train and val loaders
-        train_loader, val_loader = None, None
-        headers_to_populate_train, headers_to_populate_val = None, None
-    
-        if train_csv is not None:
-            # populate the data frames
-            (
-                parameters["training_data"],
-                headers_to_populate_train,
-            ) = parseTrainingCSV(train_csv, train=True)
-            parameters = populate_header_in_parameters(
-                parameters, headers_to_populate_train
-            )
-            # get the train loader
-            train_loader = get_train_loader(parameters)
-            parameters["training_samples_size"] = len(train_loader)
-            # get the hash of the training data for reproducibility
-            parameters["training_data_hash"] = hash_pandas_object(
-                parameters["training_data"]
-            ).sum()
-    
-        if val_csv is not None:
-            (
-                parameters["validation_data"],
-                headers_to_populate_val,
-            ) = parseTrainingCSV(val_csv, train=False)
-            if headers_to_populate_train is None:
-                parameters = populate_header_in_parameters(
-                    parameters, headers_to_populate_val
-                )
-            # get the validation loader
-            val_loader = get_validation_loader(parameters)
-    
-        # get the model
-        model = get_model(parameters)
-    
-        parameters["model_parameters_gen"] = model.generator.parameters()
-        parameters["model_parameters_disc"] = model.discriminator.parameters()
-    
-        optimizer_gen, optimizer_disc = get_optimizers_gan(parameters)
-        parameters["optimizer_gen_object"] = optimizer_gen
-        parameters["optimizer_disc_object"] = optimizer_disc
-        (
-            model,
-            parameters["model"]["amp"],
-            parameters["device"],
-            parameters["device_id"],
-        ) = send_model_to_device(
-            model,
-            amp=parameters["model"]["amp"],
-            device=device,
-            optimizer_1=optimizer_gen,
-            optimizer_2=optimizer_disc,
-        )
-        if train_csv is not None:
-            if not ("step_size" in parameters["scheduler"]):
->               parameters["scheduler"]["step_size"] = (
-                    parameters["training_samples_size"]
-                    / parameters["learning_rate"]
-                )
-E               TypeError: 'str' object does not support item assignment
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:97: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:362: in training_loop_gans
-    ) = create_pytorch_objects_gan(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/generic.py:107: in create_pytorch_objects_gan
-    scheduler_gen, scheduler_disc = get_scheduler_gan(parameters)
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/schedulers/__init__.py:46: in get_scheduler_gan
-    scheduler_gen = scheduler_gen_function(params)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-parameters = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'clip_grad': None, ...}
-
-    def base_triangle(parameters):
-        """
-        This function parses the parameters from the config file and returns the appropriate object
-        """
-    
-        # pick defaults
-        if not ("min_lr" in parameters["scheduler"]):
-            parameters["scheduler"]["min_lr"] = 10**-3
-        if not ("max_lr" in parameters["scheduler"]):
-            parameters["scheduler"]["max_lr"] = 1
-    
-        clr = cyclical_lr(
-            parameters["scheduler"]["step_size"],
-            min_lr=parameters["scheduler"]["min_lr"],
-            max_lr=parameters["scheduler"]["max_lr"],
-        )
->       return LambdaLR(parameters["optimizer_object"], [clr])
-E       KeyError: 'optimizer_object'
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/schedulers/wrap_torch.py:63: KeyError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:368: in training_loop_gans
-    save_model(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/utils/modelio.py:167: in save_model
-    torch.save(model_dict, path)
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:619: in save
-    _save(obj, opened_zipfile, pickle_module, pickle_protocol, _disable_byteorder_record)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-obj = {'epoch': 0, 'git_hash': 'c0a27a885495b3a2ffc93457442ca5343eba04b2', 'loss_disc': 10000000.0, 'loss_gen': -10000000.0, ...}
-zip_file = <torch.PyTorchFileWriter object at 0x7fd10390d4f0>, pickle_module = <module 'pickle' from '/home/szymon/code/venvs/gandalf_env/lib/python3.10/pickle.py'>
-pickle_protocol = 2, _disable_byteorder_record = False
-
-    def _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record):
-        serialized_storages = {}
-        id_map: Dict[int, str] = {}
-    
-        # Since loading storages that view the same data with different dtypes is
-        # not supported, we need to keep track of the dtype associated with each
-        # storage data_ptr and throw an error if the dtype is ever different.
-        # TODO: This feature could be added in the future
-        storage_dtypes: Dict[int, torch.dtype] = {}
-    
-        def persistent_id(obj):
-            # FIXME: the docs say that persistent_id should only return a string
-            # but torch store returns tuples. This works only in the binary protocol
-            # see
-            # https://docs.python.org/2/library/pickle.html#pickling-and-unpickling-external-objects
-            # https://github.com/python/cpython/blob/master/Lib/pickle.py#L527-L537
-            if isinstance(obj, torch.storage.TypedStorage) or torch.is_storage(obj):
-    
-                if isinstance(obj, torch.storage.TypedStorage):
-                    # TODO: Once we decide to break serialization FC, this case
-                    # can be deleted
-                    storage = obj._untyped_storage
-                    storage_dtype = obj.dtype
-                    storage_type_str = obj._pickle_storage_type()
-                    storage_type = getattr(torch, storage_type_str)
-                    storage_numel = obj._size()
-    
-                else:
-                    storage = obj
-                    storage_dtype = torch.uint8
-                    storage_type = normalize_storage_type(type(obj))
-                    storage_numel = storage.nbytes()
-    
-                # If storage is allocated, ensure that any other saved storages
-                # pointing to the same data all have the same dtype. If storage is
-                # not allocated, don't perform this check
-                if storage.data_ptr() != 0:
-                    if storage.data_ptr() in storage_dtypes:
-                        if storage_dtype != storage_dtypes[storage.data_ptr()]:
-                            raise RuntimeError(
-                                'Cannot save multiple tensors or storages that '
-                                'view the same data as different types')
-                    else:
-                        storage_dtypes[storage.data_ptr()] = storage_dtype
-    
-                storage_key = id_map.setdefault(storage._cdata, str(len(id_map)))
-                location = location_tag(storage)
-                serialized_storages[storage_key] = storage
-    
-                return ('storage',
-                        storage_type,
-                        storage_key,
-                        location,
-                        storage_numel)
-    
-            return None
-    
-        # Write the pickle data for `obj`
-        data_buf = io.BytesIO()
-        pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
-        pickler.persistent_id = persistent_id
->       pickler.dump(obj)
-E       TypeError: cannot pickle 'generator' object
-
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:831: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:379: in training_loop_gans
-    save_model(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/utils/modelio.py:167: in save_model
-    torch.save(model_dict, path)
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:619: in save
-    _save(obj, opened_zipfile, pickle_module, pickle_protocol, _disable_byteorder_record)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-obj = {'epoch': 0, 'git_hash': 'c0a27a885495b3a2ffc93457442ca5343eba04b2', 'loss_disc': 10000000.0, 'loss_gen': -10000000.0, ...}
-zip_file = <torch.PyTorchFileWriter object at 0x7f60512ea5f0>, pickle_module = <module 'pickle' from '/home/szymon/code/venvs/gandalf_env/lib/python3.10/pickle.py'>
-pickle_protocol = 2, _disable_byteorder_record = False
-
-    def _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record):
-        serialized_storages = {}
-        id_map: Dict[int, str] = {}
-    
-        # Since loading storages that view the same data with different dtypes is
-        # not supported, we need to keep track of the dtype associated with each
-        # storage data_ptr and throw an error if the dtype is ever different.
-        # TODO: This feature could be added in the future
-        storage_dtypes: Dict[int, torch.dtype] = {}
-    
-        def persistent_id(obj):
-            # FIXME: the docs say that persistent_id should only return a string
-            # but torch store returns tuples. This works only in the binary protocol
-            # see
-            # https://docs.python.org/2/library/pickle.html#pickling-and-unpickling-external-objects
-            # https://github.com/python/cpython/blob/master/Lib/pickle.py#L527-L537
-            if isinstance(obj, torch.storage.TypedStorage) or torch.is_storage(obj):
-    
-                if isinstance(obj, torch.storage.TypedStorage):
-                    # TODO: Once we decide to break serialization FC, this case
-                    # can be deleted
-                    storage = obj._untyped_storage
-                    storage_dtype = obj.dtype
-                    storage_type_str = obj._pickle_storage_type()
-                    storage_type = getattr(torch, storage_type_str)
-                    storage_numel = obj._size()
-    
-                else:
-                    storage = obj
-                    storage_dtype = torch.uint8
-                    storage_type = normalize_storage_type(type(obj))
-                    storage_numel = storage.nbytes()
-    
-                # If storage is allocated, ensure that any other saved storages
-                # pointing to the same data all have the same dtype. If storage is
-                # not allocated, don't perform this check
-                if storage.data_ptr() != 0:
-                    if storage.data_ptr() in storage_dtypes:
-                        if storage_dtype != storage_dtypes[storage.data_ptr()]:
-                            raise RuntimeError(
-                                'Cannot save multiple tensors or storages that '
-                                'view the same data as different types')
-                    else:
-                        storage_dtypes[storage.data_ptr()] = storage_dtype
-    
-                storage_key = id_map.setdefault(storage._cdata, str(len(id_map)))
-                location = location_tag(storage)
-                serialized_storages[storage_key] = storage
-    
-                return ('storage',
-                        storage_type,
-                        storage_key,
-                        location,
-                        storage_numel)
-    
-            return None
-    
-        # Write the pickle data for `obj`
-        data_buf = io.BytesIO()
-        pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
-        pickler.persistent_id = persistent_id
->       pickler.dump(obj)
-E       TypeError: cannot pickle 'generator' object
-
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:831: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:379: in training_loop_gans
-    save_model(
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/utils/modelio.py:167: in save_model
-    torch.save(model_dict, path)
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:619: in save
-    _save(obj, opened_zipfile, pickle_module, pickle_protocol, _disable_byteorder_record)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-obj = {'epoch': 0, 'git_hash': 'c0a27a885495b3a2ffc93457442ca5343eba04b2', 'loss_disc': 10000000.0, 'loss_gen': -10000000.0, ...}
-zip_file = <torch.PyTorchFileWriter object at 0x7f83ed0067b0>, pickle_module = <module 'pickle' from '/home/szymon/code/venvs/gandalf_env/lib/python3.10/pickle.py'>
-pickle_protocol = 2, _disable_byteorder_record = False
-
-    def _save(obj, zip_file, pickle_module, pickle_protocol, _disable_byteorder_record):
-        serialized_storages = {}
-        id_map: Dict[int, str] = {}
-    
-        # Since loading storages that view the same data with different dtypes is
-        # not supported, we need to keep track of the dtype associated with each
-        # storage data_ptr and throw an error if the dtype is ever different.
-        # TODO: This feature could be added in the future
-        storage_dtypes: Dict[int, torch.dtype] = {}
-    
-        def persistent_id(obj):
-            # FIXME: the docs say that persistent_id should only return a string
-            # but torch store returns tuples. This works only in the binary protocol
-            # see
-            # https://docs.python.org/2/library/pickle.html#pickling-and-unpickling-external-objects
-            # https://github.com/python/cpython/blob/master/Lib/pickle.py#L527-L537
-            if isinstance(obj, torch.storage.TypedStorage) or torch.is_storage(obj):
-    
-                if isinstance(obj, torch.storage.TypedStorage):
-                    # TODO: Once we decide to break serialization FC, this case
-                    # can be deleted
-                    storage = obj._untyped_storage
-                    storage_dtype = obj.dtype
-                    storage_type_str = obj._pickle_storage_type()
-                    storage_type = getattr(torch, storage_type_str)
-                    storage_numel = obj._size()
-    
-                else:
-                    storage = obj
-                    storage_dtype = torch.uint8
-                    storage_type = normalize_storage_type(type(obj))
-                    storage_numel = storage.nbytes()
-    
-                # If storage is allocated, ensure that any other saved storages
-                # pointing to the same data all have the same dtype. If storage is
-                # not allocated, don't perform this check
-                if storage.data_ptr() != 0:
-                    if storage.data_ptr() in storage_dtypes:
-                        if storage_dtype != storage_dtypes[storage.data_ptr()]:
-                            raise RuntimeError(
-                                'Cannot save multiple tensors or storages that '
-                                'view the same data as different types')
-                    else:
-                        storage_dtypes[storage.data_ptr()] = storage_dtype
-    
-                storage_key = id_map.setdefault(storage._cdata, str(len(id_map)))
-                location = location_tag(storage)
-                serialized_storages[storage_key] = storage
-    
-                return ('storage',
-                        storage_type,
-                        storage_key,
-                        location,
-                        storage_numel)
-    
-            return None
-    
-        # Write the pickle data for `obj`
-        data_buf = io.BytesIO()
-        pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
-        pickler.persistent_id = persistent_id
->       pickler.dump(obj)
-E       TypeError: cannot pickle 'generator' object
-
-../venvs/gandalf_env/lib/python3.10/site-packages/torch/serialization.py:831: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-training_data =    SubjectID                                          Channel_0                                              Label
-2  ...s...
-7          5  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-validation_data =    0                                                  1                                                  2
-0  7  /home.../2d_rad_s...
-1  6  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-device = 'cpu', params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}, output_dir = '/home/szymon/code/GaNDLF/GANDLF/GAN/testing/data_output'
-testing_data =    0                                                  1                                                  2
-0  7  /home.../2d_rad_s...
-1  6  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-epochs = typing.Optional[int]
-
-    def training_loop_gans(
-        training_data: DataFrame,
-        validation_data: DataFrame,
-        device: str,
-        params: dict,
-        output_dir: Union[str, Path],
-        testing_data=Union[DataFrame, None],
-        epochs=Union[int, None],
-    ):
-        """
-        The main training loop for GANs.
-    
-        Args:
-            training_data (pandas.DataFrame): The data to use for training.
-            validation_data (pandas.DataFrame): The data to use for validation.
-            device (str): The device to perform computations on.
-            params (dict): The parameters dictionary.
-            output_dir (str): The output directory.
-            testing_data (pandas.DataFrame): The data to use for testing.
-            epochs (int): The number of epochs to train; if None, take from params.
-        """
-        if epochs is None:
-            epochs = params["num_epochs"]
-        params["device"] = device
-        params["output_dir"] = output_dir
-        params["training_data"] = training_data
-        params["validation_data"] = validation_data
-        params["testing_data"] = testing_data
-        testingDataDefined = True
-        if params["testing_data"] is None:
-            # testing_data = validation_data
-            testingDataDefined = False
-    
-        # Setup a few variables for tracking
-        best_loss_disc = 1e7
-        best_loss_gen = -1e7
-        patience, start_epoch = 0, 0
-        first_model_saved = False
-        model_paths = {
-            "best": os.path.join(
-                output_dir, params["model"]["architecture"] + best_model_path_end
-            ),
-            "initial": os.path.join(
-                output_dir,
-                params["model"]["architecture"] + initial_model_path_end,
-            ),
-            "latest": os.path.join(
-                output_dir, params["model"]["architecture"] + latest_model_path_end
-            ),
-        }
-        main_dict = None
-        if os.path.exists(model_paths["best"]):
-            main_dict = load_model(model_paths["best"], params["device"])
-            version_check(params["version"], version_to_check=main_dict["version"])
-            params["previous_parameters"] = main_dict.get("parameters", None)
-    
-        # Defining our model here according to parameters mentioned in the configuration file
-        print("Number of channels : ", params["model"]["num_channels"])
-    
-        (
-            model,
-            optimizer_g,
-            optimizer_d,
-            train_dataloader,
-            val_dataloader,
-            scheduler_g,
-            scheduler_d,
-            params,
-        ) = create_pytorch_objects_gan(
-            params, training_data, validation_data, device
-        )
-        # save the initial model
-        dct_test = (
-            {
-                "epoch": 0,
-                "model_state_dict": get_model_dict(model, params["device_id"]),
-                "optimizer_gen_state_dict": optimizer_g.state_dict(),
-                "optimizer_disc_state_dict": optimizer_d.state_dict(),
-                "loss_gen": best_loss_gen,
-                "loss_disc": best_loss_disc,
-            },
-        )
-        print(dct_test)
-        if not os.path.exists(model_paths["initial"]):
-            # TODO check if the saving is indeed correct
-            save_model(
-                {
-                    "epoch": 0,
-                    "model_state_dict": get_model_dict(model, params["device_id"]),
-                    "optimizer_gen_state_dict": optimizer_g.state_dict(),
-                    "optimizer_disc_state_dict": optimizer_d.state_dict(),
-                    "loss_gen": best_loss_gen,
-                    "loss_disc": best_loss_disc,
-                },
-                model,
-                params,
-                model_paths["initial"],
-                onnx_export=False,
-            )
-            print("Initial model saved.")
-        # if previous model file is present, load it up
-        if main_dict is not None:
-            try:
-                model.load_state_dict(main_dict["model_state_dict"])
-                start_epoch = main_dict["epoch"]
-                optimizer_g.load_state_dict(main_dict["optimizer_gen_state_dict"])
-                optimizer_d.load_state_dict(main_dict["optimizer_disc_state_dict"])
-                best_loss_gen = main_dict["loss_gen"]
-                best_loss_disc = main_dict["loss_disc"]
-                params["previous_parameters"] = main_dict.get("parameters", None)
-                print("Previous model successfully loaded.")
-            except RuntimeWarning:
-                RuntimeWarning(
-                    "Previous model could not be loaded, initializing model"
-                )
-        if params["model"]["print_summary"]:
-            print_model_summary(
-                model,
-                params["batch_size"],
-                params["model"]["num_channels"],
-                params["patch_size"],
-                params["device"],
-            )
-    
-        if testingDataDefined:
-            test_dataloader = get_testing_loader(params)
-        # Start training time here
-        start_time = time.time()
-    
-        if not (os.environ.get("HOSTNAME") is None):
-            print("Hostname :", os.environ.get("HOSTNAME"))
-    
-        # datetime object containing current date and time
-        print("Initializing training at :", get_date_time(), flush=True)
-    
-        # TODO is this correct? We do not use here the
-        # calculate_overall_metrics ever, so it is skipped
-        metrics_log = params["metrics"].copy()
-    
-        # Setup a few loggers for tracking
-        train_logger = LoggerGAN(
-            logger_csv_filename=os.path.join(output_dir, "logs_training.csv"),
-            metrics=metrics_log,
-        )
-        valid_logger = LoggerGAN(
-            logger_csv_filename=os.path.join(output_dir, "logs_validation.csv"),
-            metrics=metrics_log,
-        )
-        if testingDataDefined:
-            test_logger = LoggerGAN(
-                logger_csv_filename=os.path.join(output_dir, "logs_testing.csv"),
-                metrics=metrics_log,
-            )
-        train_logger.write_header(mode="train")
-        valid_logger.write_header(mode="valid")
-        if testingDataDefined:
-            test_logger.write_header(mode="test")
-        # TODO Do we have medcam?
-        # if "medcam" in params:
-        #     model = medcam.inject(
-        #         model,
-        #         output_dir=os.path.join(
-        #             output_dir, "attention_maps", params["medcam"]["backend"]
-        #         ),
-        #         backend=params["medcam"]["backend"],
-        #         layer=params["medcam"]["layer"],
-        #         save_maps=False,
-        #         return_attention=True,
-        #         enabled=False,
-        #     )
-        #     params["medcam_enabled"] = False
-    
-        print("Using device:", device, flush=True)
-        # Iterate for number of epochs
->       for epoch in range(start_epoch, epochs):
-E       TypeError: '_UnionGenericAlias' object cannot be interpreted as an integer
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:468: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
-        parameters = parseConfigGAN(
-            testingDir + "/config_generation.yaml", version_check_flag=False
-        )
-        training_data, parameters["headers"] = parseTrainingCSV(
-            inputDir + "/train_2d_rad_segmentation.csv"
-        )
-        parameters["modality"] = "rad"
-        parameters["patch_size"] = patch_size["2D"]
-        parameters["model"]["dimension"] = 2
-        parameters["model"]["class_list"] = [0, 255]
-        parameters["model"]["amp"] = True
-        parameters["model"]["num_channels"] = 3
-        parameters["model"]["onnx_export"] = False
-        parameters["model"]["print_summary"] = False
-        parameters["data_preprocessing"]["resize_image"] = [224, 224]
-        parameters = populate_header_in_parameters(
-            parameters, parameters["headers"]
-        )
-        # read and initialize parameters for specific data dimension
-        for model in all_models_generation:
-            parameters["model"]["architecture"] = model
-            parameters["nested_training"]["testing"] = -5
-            parameters["nested_training"]["validation"] = -5
-            sanitize_outputDir()
->           TrainingManagerGAN(
-                dataframe=training_data,
-                outputDir=outputDir,
-                parameters=parameters,
-                device=device,
-                resume=False,
-                reset=True,
-            )
-
-GANDLF/GAN/testing/test_gan.py:80: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
-    training_loop_gans(
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-training_data =    SubjectID                                          Channel_0                                              Label
-2  ...s...
-7          8  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-validation_data =    0                                                  1                                                  2
-0  1  /home.../2d_rad_s...
-1  6  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-device = 'cpu', params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}, output_dir = '/home/szymon/code/GaNDLF/GANDLF/GAN/testing/data_output'
-testing_data =    0                                                  1                                                  2
-0  1  /home.../2d_rad_s...
-1  6  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...  /home/szymon/code/GaNDLF/testing/data/2d_rad_s...
-epochs = typing.Optional[int]
-
-    def training_loop_gans(
-        training_data: DataFrame,
-        validation_data: DataFrame,
-        device: str,
-        params: dict,
-        output_dir: Union[str, Path],
-        testing_data=Union[DataFrame, None],
-        epochs=Union[int, None],
-    ):
-        """
-        The main training loop for GANs.
-    
-        Args:
-            training_data (pandas.DataFrame): The data to use for training.
-            validation_data (pandas.DataFrame): The data to use for validation.
-            device (str): The device to perform computations on.
-            params (dict): The parameters dictionary.
-            output_dir (str): The output directory.
-            testing_data (pandas.DataFrame): The data to use for testing.
-            epochs (int): The number of epochs to train; if None, take from params.
-        """
-        if epochs is None:
-            epochs = params["num_epochs"]
-        params["device"] = device
-        params["output_dir"] = output_dir
-        params["training_data"] = training_data
-        params["validation_data"] = validation_data
-        params["testing_data"] = testing_data
-        testingDataDefined = True
-        if params["testing_data"] is None:
-            # testing_data = validation_data
-            testingDataDefined = False
-    
-        # Setup a few variables for tracking
-        best_loss_disc = 1e7
-        best_loss_gen = -1e7
-        patience, start_epoch = 0, 0
-        first_model_saved = False
-        model_paths = {
-            "best": os.path.join(
-                output_dir, params["model"]["architecture"] + best_model_path_end
-            ),
-            "initial": os.path.join(
-                output_dir,
-                params["model"]["architecture"] + initial_model_path_end,
-            ),
-            "latest": os.path.join(
-                output_dir, params["model"]["architecture"] + latest_model_path_end
-            ),
-        }
-        main_dict = None
-        if os.path.exists(model_paths["best"]):
-            main_dict = load_model(model_paths["best"], params["device"])
-            version_check(params["version"], version_to_check=main_dict["version"])
-            params["previous_parameters"] = main_dict.get("parameters", None)
-    
-        # Defining our model here according to parameters mentioned in the configuration file
-        print("Number of channels : ", params["model"]["num_channels"])
-    
-        (
-            model,
-            optimizer_g,
-            optimizer_d,
-            train_dataloader,
-            val_dataloader,
-            scheduler_g,
-            scheduler_d,
-            params,
-        ) = create_pytorch_objects_gan(
-            params, training_data, validation_data, device
-        )
-        # save the initial model
-        if not os.path.exists(model_paths["initial"]):
-            # TODO check if the saving is indeed correct
-            save_model(
-                {
-                    "epoch": 0,
-                    "model_state_dict": get_model_dict(model, params["device_id"]),
-                    "optimizer_gen_state_dict": optimizer_g.state_dict(),
-                    "optimizer_disc_state_dict": optimizer_d.state_dict(),
-                    "loss_gen": best_loss_gen,
-                    "loss_disc": best_loss_disc,
-                },
-                model,
-                params,
-                model_paths["initial"],
-                onnx_export=False,
-            )
-            print("Initial model saved.")
-        # if previous model file is present, load it up
-        if main_dict is not None:
-            try:
-                model.load_state_dict(main_dict["model_state_dict"])
-                start_epoch = main_dict["epoch"]
-                optimizer_g.load_state_dict(main_dict["optimizer_gen_state_dict"])
-                optimizer_d.load_state_dict(main_dict["optimizer_disc_state_dict"])
-                best_loss_gen = main_dict["loss_gen"]
-                best_loss_disc = main_dict["loss_disc"]
-                params["previous_parameters"] = main_dict.get("parameters", None)
-                print("Previous model successfully loaded.")
-            except RuntimeWarning:
-                RuntimeWarning(
-                    "Previous model could not be loaded, initializing model"
-                )
-        if params["model"]["print_summary"]:
-            print_model_summary(
-                model,
-                params["batch_size"],
-                params["model"]["num_channels"],
-                params["patch_size"],
-                params["device"],
-            )
-    
-        if testingDataDefined:
-            test_dataloader = get_testing_loader(params)
-        # Start training time here
-        start_time = time.time()
-    
-        if not (os.environ.get("HOSTNAME") is None):
-            print("Hostname :", os.environ.get("HOSTNAME"))
-    
-        # datetime object containing current date and time
-        print("Initializing training at :", get_date_time(), flush=True)
-    
-        # TODO is this correct? We do not use here the
-        # calculate_overall_metrics ever, so it is skipped
-        metrics_log = params["metrics"].copy()
-    
-        # Setup a few loggers for tracking
-        train_logger = LoggerGAN(
-            logger_csv_filename=os.path.join(output_dir, "logs_training.csv"),
-            metrics=metrics_log,
-        )
-        valid_logger = LoggerGAN(
-            logger_csv_filename=os.path.join(output_dir, "logs_validation.csv"),
-            metrics=metrics_log,
-        )
-        if testingDataDefined:
-            test_logger = LoggerGAN(
-                logger_csv_filename=os.path.join(output_dir, "logs_testing.csv"),
-                metrics=metrics_log,
-            )
-        train_logger.write_header(mode="train")
-        valid_logger.write_header(mode="valid")
-        if testingDataDefined:
-            test_logger.write_header(mode="test")
-        # TODO Do we have medcam?
-        # if "medcam" in params:
-        #     model = medcam.inject(
-        #         model,
-        #         output_dir=os.path.join(
-        #             output_dir, "attention_maps", params["medcam"]["backend"]
-        #         ),
-        #         backend=params["medcam"]["backend"],
-        #         layer=params["medcam"]["layer"],
-        #         save_maps=False,
-        #         return_attention=True,
-        #         enabled=False,
-        #     )
-        #     params["medcam_enabled"] = False
-    
-        print("Using device:", device, flush=True)
-        # Iterate for number of epochs
-        print(epochs)
-        print(start_epoch)
->       for epoch in range(start_epoch, epochs):
-E       TypeError: '_UnionGenericAlias' object cannot be interpreted as an integer
-
-../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:459: TypeError
-device = 'cpu'
-
-    def test_train_segmentation_rad_2d(device):
-        print("03: Starting 2D Rad segmentation tests")
-        # read and parse csv
         parameters = parseConfigGAN(
             testingDir + "/config_generation.yaml", version_check_flag=False
         )
@@ -2239,7 +53,7 @@ model = DCGAN(
     )
   )
 )
-train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f98b09dfaf0>
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f14052cbe50>
 optimizer_g = Adam (
 Parameter Group 0
     amsgrad: False
@@ -2349,3 +163,1136 @@ E            * (tuple of ints size, Number fill_value, *, tuple of names names, 
 E            * (tuple of ints size, Number fill_value, *, Tensor out, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
 
 ../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:106: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:511: in training_loop_gans
+    ) = train_network_gan(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model = DCGAN(
+  (generator): _GneratorDCGAN(
+    (feature_extractor): Sequential(
+      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
+      (linear2): Linear(in_features=128, out_features=1, bias=True)
+      (sigmoid): Sigmoid()
+    )
+  )
+)
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f3397f9fe20>
+optimizer_g = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+optimizer_d = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def train_network_gan(
+        model, train_dataloader, optimizer_g, optimizer_d, params
+    ):
+        """
+        Function to train a GAN network for a single epoch.
+        This function is a modified version of train_network() to support
+        usage of two optimizers for the generator and discriminator.
+    
+        Parameters
+        ----------
+        model : torch.model
+            The model to process the input image with, it should support appropriate dimensions.
+        train_dataloader : torch.DataLoader
+            The dataloader for the training epoch
+        optimizer_g : torch.optim
+            Optimizer for optimizing generator network
+        optimizer_d : torch.optim
+            Optimizer for optimizing discriminator network
+        params : dict
+            the parameters passed by the user yaml
+    
+        Returns
+        -------
+        average_epoch_train_loss_gen : float
+            Train loss for the current epoch for generator
+        average_epoch_train_loss_disc : float
+            Train loss for the current epoch for discriminator
+        average_epoch_train_metric : dict
+            Train metrics for the current epoch
+        """
+    
+        print("*" * 20)
+        print("Starting Training : ")
+        print("*" * 20)
+        # Initialize a few things
+        total_epoch_train_loss_gen = 0
+        total_epoch_train_loss_disc = 0
+        total_epoch_train_metric = {}
+        average_epoch_train_metric = {}
+        for metric in params["metrics"]:
+            if "per_label" in metric:  # conditional generation not yet implemented
+                total_epoch_train_metric[metric] = []
+            else:
+                total_epoch_train_metric[metric] = 0
+    
+        # automatic mixed precision - https://pytorch.org/docs/stable/amp.html
+        if params["model"]["amp"]:
+            scaler = GradScaler()
+            if params["verbose"]:
+                print("Using Automatic mixed precision", flush=True)
+    
+        # Set the model to train
+        model.train()
+        for batch_idx, (subject) in enumerate(
+            tqdm(train_dataloader, desc="Looping over training data")
+        ):
+            #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
+            optimizer_d.zero_grad()
+            image_real = (
+                torch.cat(
+                    [subject[key][torchio.DATA] for key in params["channel_keys"]],
+                    dim=1,
+                )
+                .float()
+                .to(params["device"])
+            )
+            current_batch_size = image_real.shape[0]
+    
+>           label_real = torch.full(
+                size=current_batch_size,
+                fill_value=1,
+                dtype=torch.float,
+                device=params["device"],
+            )
+E           TypeError: full() received an invalid combination of arguments - got (device=torch.device, dtype=torch.dtype, fill_value=int, size=int, ), but expected one of:
+E            * (tuple of ints size, Number fill_value, *, tuple of names names, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+E            * (tuple of ints size, Number fill_value, *, Tensor out, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:106: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:512: in training_loop_gans
+    ) = train_network_gan(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model = DCGAN(
+  (generator): _GneratorDCGAN(
+    (feature_extractor): Sequential(
+      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
+      (linear2): Linear(in_features=128, out_features=1, bias=True)
+      (sigmoid): Sigmoid()
+    )
+  )
+)
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7fa589ec3ca0>
+optimizer_g = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+optimizer_d = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def train_network_gan(
+        model, train_dataloader, optimizer_g, optimizer_d, params
+    ):
+        """
+        Function to train a GAN network for a single epoch.
+        This function is a modified version of train_network() to support
+        usage of two optimizers for the generator and discriminator.
+    
+        Parameters
+        ----------
+        model : torch.model
+            The model to process the input image with, it should support appropriate dimensions.
+        train_dataloader : torch.DataLoader
+            The dataloader for the training epoch
+        optimizer_g : torch.optim
+            Optimizer for optimizing generator network
+        optimizer_d : torch.optim
+            Optimizer for optimizing discriminator network
+        params : dict
+            the parameters passed by the user yaml
+    
+        Returns
+        -------
+        average_epoch_train_loss_gen : float
+            Train loss for the current epoch for generator
+        average_epoch_train_loss_disc : float
+            Train loss for the current epoch for discriminator
+        average_epoch_train_metric : dict
+            Train metrics for the current epoch
+        """
+    
+        print("*" * 20)
+        print("Starting Training : ")
+        print("*" * 20)
+        # Initialize a few things
+        total_epoch_train_loss_gen = 0
+        total_epoch_train_loss_disc = 0
+        total_epoch_train_metric = {}
+        average_epoch_train_metric = {}
+        for metric in params["metrics"]:
+            if "per_label" in metric:  # conditional generation not yet implemented
+                total_epoch_train_metric[metric] = []
+            else:
+                total_epoch_train_metric[metric] = 0
+    
+        # automatic mixed precision - https://pytorch.org/docs/stable/amp.html
+        if params["model"]["amp"]:
+            scaler = GradScaler()
+            if params["verbose"]:
+                print("Using Automatic mixed precision", flush=True)
+    
+        # Set the model to train
+        model.train()
+        for batch_idx, (subject) in enumerate(
+            tqdm(train_dataloader, desc="Looping over training data")
+        ):
+            #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
+            optimizer_d.zero_grad()
+            image_real = (
+                torch.cat(
+                    [subject[key][torchio.DATA] for key in params["channel_keys"]],
+                    dim=1,
+                )
+                .float()
+                .to(params["device"])
+            )
+            current_batch_size = image_real.shape[0]
+            print("Current batch size : ", current_batch_size)
+            print("device : ", params["device"])
+>           label_real = torch.full(
+                size=current_batch_size,
+                fill_value=1,
+                dtype=torch.float,
+                device=params["device"],
+            )
+E           TypeError: full() received an invalid combination of arguments - got (device=torch.device, dtype=torch.dtype, fill_value=int, size=int, ), but expected one of:
+E            * (tuple of ints size, Number fill_value, *, tuple of names names, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+E            * (tuple of ints size, Number fill_value, *, Tensor out, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:107: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:512: in training_loop_gans
+    ) = train_network_gan(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model = DCGAN(
+  (generator): _GneratorDCGAN(
+    (feature_extractor): Sequential(
+      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
+      (linear2): Linear(in_features=128, out_features=1, bias=True)
+      (sigmoid): Sigmoid()
+    )
+  )
+)
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f0a7c9bba90>
+optimizer_g = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+optimizer_d = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def train_network_gan(
+        model, train_dataloader, optimizer_g, optimizer_d, params
+    ):
+        """
+        Function to train a GAN network for a single epoch.
+        This function is a modified version of train_network() to support
+        usage of two optimizers for the generator and discriminator.
+    
+        Parameters
+        ----------
+        model : torch.model
+            The model to process the input image with, it should support appropriate dimensions.
+        train_dataloader : torch.DataLoader
+            The dataloader for the training epoch
+        optimizer_g : torch.optim
+            Optimizer for optimizing generator network
+        optimizer_d : torch.optim
+            Optimizer for optimizing discriminator network
+        params : dict
+            the parameters passed by the user yaml
+    
+        Returns
+        -------
+        average_epoch_train_loss_gen : float
+            Train loss for the current epoch for generator
+        average_epoch_train_loss_disc : float
+            Train loss for the current epoch for discriminator
+        average_epoch_train_metric : dict
+            Train metrics for the current epoch
+        """
+    
+        print("*" * 20)
+        print("Starting Training : ")
+        print("*" * 20)
+        # Initialize a few things
+        total_epoch_train_loss_gen = 0
+        total_epoch_train_loss_disc = 0
+        total_epoch_train_metric = {}
+        average_epoch_train_metric = {}
+        for metric in params["metrics"]:
+            if "per_label" in metric:  # conditional generation not yet implemented
+                total_epoch_train_metric[metric] = []
+            else:
+                total_epoch_train_metric[metric] = 0
+    
+        # automatic mixed precision - https://pytorch.org/docs/stable/amp.html
+        if params["model"]["amp"]:
+            scaler = GradScaler()
+            if params["verbose"]:
+                print("Using Automatic mixed precision", flush=True)
+    
+        # Set the model to train
+        model.train()
+        for batch_idx, (subject) in enumerate(
+            tqdm(train_dataloader, desc="Looping over training data")
+        ):
+            #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
+            optimizer_d.zero_grad()
+            image_real = (
+                torch.cat(
+                    [subject[key][torchio.DATA] for key in params["channel_keys"]],
+                    dim=1,
+                )
+                .float()
+                .to(params["device"])
+            )
+            current_batch_size = image_real.shape[0]
+            print("Current batch size : ", current_batch_size)
+            print("device : ", params["device"])
+>           label_real = torch.full(
+                size=current_batch_size,
+                fill_value=1,
+                dtype=torch.float,
+                device=torch.device(params["device"]),
+            )
+E           TypeError: full() received an invalid combination of arguments - got (device=torch.device, dtype=torch.dtype, fill_value=int, size=int, ), but expected one of:
+E            * (tuple of ints size, Number fill_value, *, tuple of names names, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+E            * (tuple of ints size, Number fill_value, *, Tensor out, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:107: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:512: in training_loop_gans
+    ) = train_network_gan(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model = DCGAN(
+  (generator): _GneratorDCGAN(
+    (feature_extractor): Sequential(
+      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
+      (linear2): Linear(in_features=128, out_features=1, bias=True)
+      (sigmoid): Sigmoid()
+    )
+  )
+)
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f06be1bfa90>
+optimizer_g = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+optimizer_d = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def train_network_gan(
+        model, train_dataloader, optimizer_g, optimizer_d, params
+    ):
+        """
+        Function to train a GAN network for a single epoch.
+        This function is a modified version of train_network() to support
+        usage of two optimizers for the generator and discriminator.
+    
+        Parameters
+        ----------
+        model : torch.model
+            The model to process the input image with, it should support appropriate dimensions.
+        train_dataloader : torch.DataLoader
+            The dataloader for the training epoch
+        optimizer_g : torch.optim
+            Optimizer for optimizing generator network
+        optimizer_d : torch.optim
+            Optimizer for optimizing discriminator network
+        params : dict
+            the parameters passed by the user yaml
+    
+        Returns
+        -------
+        average_epoch_train_loss_gen : float
+            Train loss for the current epoch for generator
+        average_epoch_train_loss_disc : float
+            Train loss for the current epoch for discriminator
+        average_epoch_train_metric : dict
+            Train metrics for the current epoch
+        """
+    
+        print("*" * 20)
+        print("Starting Training : ")
+        print("*" * 20)
+        # Initialize a few things
+        total_epoch_train_loss_gen = 0
+        total_epoch_train_loss_disc = 0
+        total_epoch_train_metric = {}
+        average_epoch_train_metric = {}
+        for metric in params["metrics"]:
+            if "per_label" in metric:  # conditional generation not yet implemented
+                total_epoch_train_metric[metric] = []
+            else:
+                total_epoch_train_metric[metric] = 0
+    
+        # automatic mixed precision - https://pytorch.org/docs/stable/amp.html
+        if params["model"]["amp"]:
+            scaler = GradScaler()
+            if params["verbose"]:
+                print("Using Automatic mixed precision", flush=True)
+    
+        # Set the model to train
+        model.train()
+        for batch_idx, (subject) in enumerate(
+            tqdm(train_dataloader, desc="Looping over training data")
+        ):
+            #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
+            optimizer_d.zero_grad()
+            image_real = (
+                torch.cat(
+                    [subject[key][torchio.DATA] for key in params["channel_keys"]],
+                    dim=1,
+                )
+                .float()
+                .to(params["device"])
+            )
+            current_batch_size = image_real.shape[0]
+            print("Current batch size : ", current_batch_size)
+            print("device : ", params["device"])
+>           label_real = torch.full(
+                size=(current_batch_size),
+                fill_value=1,
+                dtype=torch.float,
+                device=torch.device(params["device"]),
+            )
+E           TypeError: full() received an invalid combination of arguments - got (device=torch.device, dtype=torch.dtype, fill_value=int, size=int, ), but expected one of:
+E            * (tuple of ints size, Number fill_value, *, tuple of names names, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+E            * (tuple of ints size, Number fill_value, *, Tensor out, torch.dtype dtype, torch.layout layout, torch.device device, bool pin_memory, bool requires_grad)
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:107: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:512: in training_loop_gans
+    ) = train_network_gan(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:124: in train_network_gan
+    loss_disc_real, _, output_disc_real, _ = step_gan(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/step.py:89: in step_gan
+    loss, metric_output = get_loss_and_metrics_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/loss_and_metric.py:80: in get_loss_and_metrics_gans
+    loss = get_loss_gans(predictions, labels, params)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+predictions = tensor([[0.4916]], grad_fn=<SigmoidBackward0>), labels = tensor([1.]), params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def get_loss_gans(predictions: Tensor, labels: Tensor, params: dict) -> Tensor:
+        """
+        Compute the loss value for adversatial generative networks.
+        Args:
+            predictions (Tensor): The predicted output from the model.
+            labels (Tensor): The ground truth label.
+            params (dict): The parameters passed by the user yaml.
+        Returns:
+            loss (Tensor): The computed loss from the label and the prediction.
+        """
+    
+        if isinstance(params["loss_function"], dict):
+            # check for mse_torch
+            loss_function = global_losses_dict[
+                list(params["loss_function"].keys())[0]
+            ]
+        else:
+            loss_str_lower = params["loss_function"].lower()
+            if loss_str_lower in global_losses_dict:
+                loss_function = global_losses_dict[loss_str_lower]
+            else:
+                sys.exit(
+                    "WARNING: Could not find the requested loss function '"
+                    + params["loss_function"]
+                )
+    
+>       loss = loss_function(predictions, labels, params)
+E       TypeError: CE() takes 2 positional arguments but 3 were given
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/loss_and_metric.py:53: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:511: in training_loop_gans
+    ) = train_network_gan(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:123: in train_network_gan
+    loss_disc_real, _, output_disc_real, _ = step_gan(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/step.py:89: in step_gan
+    loss, metric_output = get_loss_and_metrics_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/loss_and_metric.py:80: in get_loss_and_metrics_gans
+    loss = get_loss_gans(predictions, labels, params)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+predictions = tensor([[0.5843]], grad_fn=<SigmoidBackward0>), labels = tensor([1.]), params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def get_loss_gans(predictions: Tensor, labels: Tensor, params: dict) -> Tensor:
+        """
+        Compute the loss value for adversatial generative networks.
+        Args:
+            predictions (Tensor): The predicted output from the model.
+            labels (Tensor): The ground truth label.
+            params (dict): The parameters passed by the user yaml.
+        Returns:
+            loss (Tensor): The computed loss from the label and the prediction.
+        """
+    
+        if isinstance(params["loss_function"], dict):
+            # check for mse_torch
+            loss_function = global_losses_dict[
+                list(params["loss_function"].keys())[0]
+            ]
+        else:
+            loss_str_lower = params["loss_function"].lower()
+            if loss_str_lower in global_losses_dict:
+                loss_function = global_losses_dict[loss_str_lower]
+            else:
+                sys.exit(
+                    "WARNING: Could not find the requested loss function '"
+                    + params["loss_function"]
+                )
+    
+>       loss = loss_function(predictions, labels, params)
+E       TypeError: CE() takes 2 positional arguments but 3 were given
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/loss_and_metric.py:53: TypeError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:511: in training_loop_gans
+    ) = train_network_gan(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model = DCGAN(
+  (generator): _GneratorDCGAN(
+    (feature_extractor): Sequential(
+      (conv1t): ConvTranspose2d(100, 4, ker...nplace=True)
+      (linear2): Linear(in_features=128, out_features=1, bias=True)
+      (sigmoid): Sigmoid()
+    )
+  )
+)
+train_dataloader = <torch.utils.data.dataloader.DataLoader object at 0x7f15919af970>
+optimizer_g = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+optimizer_d = Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+  ...-08
+    foreach: None
+    fused: None
+    initial_lr: 0.001
+    lr: 0.001
+    maximize: False
+    weight_decay: 5e-05
+)
+params = {'batch_size': 1, 'bn_size': 4, 'channel_keys': ['1'], 'class_weights': None, ...}
+
+    def train_network_gan(
+        model, train_dataloader, optimizer_g, optimizer_d, params
+    ):
+        """
+        Function to train a GAN network for a single epoch.
+        This function is a modified version of train_network() to support
+        usage of two optimizers for the generator and discriminator.
+    
+        Parameters
+        ----------
+        model : torch.model
+            The model to process the input image with, it should support appropriate dimensions.
+        train_dataloader : torch.DataLoader
+            The dataloader for the training epoch
+        optimizer_g : torch.optim
+            Optimizer for optimizing generator network
+        optimizer_d : torch.optim
+            Optimizer for optimizing discriminator network
+        params : dict
+            the parameters passed by the user yaml
+    
+        Returns
+        -------
+        average_epoch_train_loss_gen : float
+            Train loss for the current epoch for generator
+        average_epoch_train_loss_disc : float
+            Train loss for the current epoch for discriminator
+        average_epoch_train_metric : dict
+            Train metrics for the current epoch
+        """
+    
+        print("*" * 20)
+        print("Starting Training : ")
+        print("*" * 20)
+        # Initialize a few things
+        total_epoch_train_loss_gen = 0
+        total_epoch_train_loss_disc = 0
+        total_epoch_train_metric = {}
+        average_epoch_train_metric = {}
+        for metric in params["metrics"]:
+            if "per_label" in metric:  # conditional generation not yet implemented
+                total_epoch_train_metric[metric] = []
+            else:
+                total_epoch_train_metric[metric] = 0
+    
+        # automatic mixed precision - https://pytorch.org/docs/stable/amp.html
+        if params["model"]["amp"]:
+            scaler = GradScaler()
+            if params["verbose"]:
+                print("Using Automatic mixed precision", flush=True)
+    
+        # Set the model to train
+        model.train()
+        for batch_idx, (subject) in enumerate(
+            tqdm(train_dataloader, desc="Looping over training data")
+        ):
+            #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
+            optimizer_d.zero_grad()
+            image_real = (
+                torch.cat(
+                    [subject[key][torchio.DATA] for key in params["channel_keys"]],
+                    dim=1,
+                )
+                .float()
+                .to(params["device"])
+            )
+            current_batch_size = image_real.shape[0]
+    
+            label_real = torch.full(
+                size=(current_batch_size,),
+                fill_value=1,
+                dtype=torch.float,
+                device=params["device"],
+            )
+    
+            if params["save_training"]:
+                write_training_patches(
+                    subject,
+                    params,
+                )
+            # ensure spacing is always present in params and is always subject-specific
+            if "spacing" in subject:
+                params["subject_spacing"] = subject["spacing"]
+            else:
+                params["subject_spacing"] = None
+            loss_disc_real, _, output_disc_real, _ = step_gan(
+                model, image_real, label_real, params, secondary_images=None
+            )
+            nan_loss = torch.isnan(loss_disc_real)
+            second_order = (
+                hasattr(optimizer_d, "is_second_order")
+                and optimizer_d.is_second_order
+            )
+            if params["model"]["amp"]:
+                with torch.cuda.amp.autocast():
+                    # if loss is nan, don't backprop and don't step optimizer
+                    if not nan_loss:
+                        scaler(
+                            loss=loss_disc_real,
+                            optimizer=optimizer_d,
+                            clip_grad=params["clip_grad"],
+                            clip_mode=params["clip_mode"],
+                            parameters=model_parameters_exclude_head(
+                                model, clip_mode=params["clip_mode"]
+                            ),
+                            create_graph=second_order,
+                        )
+            else:
+                if not nan_loss:
+                    loss_disc_real.backward(create_graph=second_order)
+                    if params["clip_grad"] is not None:
+                        dispatch_clip_grad_(
+                            parameters=model_parameters_exclude_head(
+                                model, clip_mode=params["clip_mode"]
+                            ),
+                            value=params["clip_grad"],
+                            mode=params["clip_mode"],
+                        )
+    
+            #### DISCRIMINATOR STEP WITH ALL FAKE LABELS ####
+            latent_vector = torch.randn(
+                current_batch_size,
+>               params["model"]["latent_vector_size"],
+                device=params["device"],
+            )
+E           KeyError: 'latent_vector_size'
+
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:160: KeyError
+device = 'cpu'
+
+    def test_train_segmentation_rad_2d(device):
+        print("03: Starting 2D Rad segmentation tests")
+        # read and parse csv
+        parameters = parseConfigGAN(
+            testingDir + "/config_generation.yaml", version_check_flag=False
+        )
+        training_data, parameters["headers"] = parseTrainingCSV(
+            inputDir + "/train_2d_rad_segmentation.csv"
+        )
+        parameters["modality"] = "rad"
+        parameters["patch_size"] = patch_size["2D"]
+        parameters["model"]["dimension"] = 2
+        parameters["model"]["class_list"] = [0, 255]
+        parameters["model"]["amp"] = True
+        parameters["model"]["num_channels"] = 3
+        parameters["model"]["onnx_export"] = False
+        parameters["model"]["print_summary"] = False
+        parameters["data_preprocessing"]["resize_image"] = [224, 224]
+        parameters = populate_header_in_parameters(
+            parameters, parameters["headers"]
+        )
+        # read and initialize parameters for specific data dimension
+        for model in all_models_generation:
+            parameters["model"]["architecture"] = model
+            parameters["nested_training"]["testing"] = -5
+            parameters["nested_training"]["validation"] = -5
+            sanitize_outputDir()
+>           TrainingManagerGAN(
+                dataframe=training_data,
+                outputDir=outputDir,
+                parameters=parameters,
+                device=device,
+                resume=False,
+                reset=True,
+            )
+
+GANDLF/GAN/testing/test_gan.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/training_manager_gan.py:270: in TrainingManagerGAN
+    training_loop_gans(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:511: in training_loop_gans
+    ) = train_network_gan(
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/GAN/compute/training_loop.py:164: in train_network_gan
+    fake_images = model.generator(latent_vector)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1518: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1527: in _call_impl
+    return forward_call(*args, **kwargs)
+../venvs/gandalf_env/lib/python3.10/site-packages/GANDLF/models/dcgan.py:178: in forward
+    out = self.feature_extractor(x)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1518: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1527: in _call_impl
+    return forward_call(*args, **kwargs)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/container.py:215: in forward
+    input = module(input)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1518: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/module.py:1527: in _call_impl
+    return forward_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = ConvTranspose2d(100, 4, kernel_size=(4, 4), stride=(1, 1), bias=False)
+input = tensor([[ 0.6329,  1.6758,  0.7465,  0.2742,  0.3970,  0.7624,  1.4102, -0.4160,
+          2.5015,  1.1939,  1.2833, -... -0.5962,  0.2316, -0.7123,  0.3340, -1.2913,  1.1229, -0.4159, -1.2324,
+         -0.5949,  1.1005, -0.1164,  0.9811]])
+output_size = None
+
+    def forward(self, input: Tensor, output_size: Optional[List[int]] = None) -> Tensor:
+        if self.padding_mode != 'zeros':
+            raise ValueError('Only `zeros` padding mode is supported for ConvTranspose2d')
+    
+        assert isinstance(self.padding, tuple)
+        # One cannot replace List by Tuple or Sequence in "_output_padding" because
+        # TorchScript does not support `Sequence[T]` or `Tuple[T, ...]`.
+        num_spatial_dims = 2
+        output_padding = self._output_padding(
+            input, output_size, self.stride, self.padding, self.kernel_size,  # type: ignore[arg-type]
+            num_spatial_dims, self.dilation)  # type: ignore[arg-type]
+    
+>       return F.conv_transpose2d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation)
+E       RuntimeError: Expected 3D (unbatched) or 4D (batched) input to conv_transpose2d, but got input of size: [1, 100]
+
+../venvs/gandalf_env/lib/python3.10/site-packages/torch/nn/modules/conv.py:952: RuntimeError

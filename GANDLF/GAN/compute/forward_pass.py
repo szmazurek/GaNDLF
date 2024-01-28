@@ -189,14 +189,14 @@ def validate_network_gan(
             current_batch_size = image.shape[0]
 
             label_real = torch.full(
-                current_batch_size,
-                1,
+                size=(current_batch_size,),
+                fill_value=1,
                 dtype=torch.float,
                 device=params["device"],
             )
             label_fake = torch.full(
-                current_batch_size,
-                0,
+                size=(current_batch_size,),
+                fill_value=0,
                 dtype=torch.float,
                 device=params["device"],
             )

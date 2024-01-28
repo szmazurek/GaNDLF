@@ -9,6 +9,7 @@ version:
   }
 model:
   {
+    latent_vector_size: 100,
     dimension: 2, # the dimension of the model and dataset: defines dimensionality of computations
     base_filters: 32, # Set base filters: number of filters present in the initial module of the U-Net convolution; for IncU-Net, keep this divisible by 4
     architecture: dcgan, # options: unet, resunet, fcn, uinc
@@ -41,7 +42,7 @@ learning_rate_d: 0.001
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
 random_seed_validation: 42
 random_seed_testing: 42
-latent_vector_size: 100
+
 scheduler_d: triangle
 scheduler_g: triangle
 # Set which loss function you want to use - options : 'dc' - for dice only, 'dcce' - for sum of dice and CE and you can guess the next (only lower-case please)
