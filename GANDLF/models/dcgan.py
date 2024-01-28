@@ -323,12 +323,12 @@ class DCGAN(ModelBase):
 
     def __init__(self, parameters: Dict):
         ModelBase.__init__(self, parameters)
-        if not ("latent_vector_dim" in parameters):
+        if not ("latent_vector_size" in parameters):
             warn(
                 "No latent vector dimension specified. Defaulting to 100.",
                 RuntimeWarning,
             )
-            parameters["latent_vector_dim"] = 100
+            parameters["latent_vector_size"] = 100
         if not ("growth_rate" in parameters):
             parameters["growth_rate"] = 2
         if not ("bn_size" in parameters):
@@ -350,7 +350,7 @@ class DCGAN(ModelBase):
         self.generator = _GneratorDCGAN(
             self.patch_size,
             self.n_dimensions,
-            parameters["latent_vector_dim"],
+            parameters["latent_vector_size"],
             self.n_channels,
             parameters["growth_rate"],
             parameters["bn_size"],
@@ -432,3 +432,7 @@ class DCGAN(ModelBase):
             torch.Tensor: The probability that the image is real.
         """
         return self.discriminator(image)
+
+    def forward(self):
+        """Placeholder"""
+        pass

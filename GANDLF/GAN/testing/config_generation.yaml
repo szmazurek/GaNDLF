@@ -12,7 +12,7 @@ model:
     dimension: 2, # the dimension of the model and dataset: defines dimensionality of computations
     base_filters: 32, # Set base filters: number of filters present in the initial module of the U-Net convolution; for IncU-Net, keep this divisible by 4
     architecture: dcgan, # options: unet, resunet, fcn, uinc
-    # final_layer: sigmoid, # can be either sigmoid, softmax or none (none == regression)
+    final_layer: sigmoid, # can be either sigmoid, softmax or none (none == regression)
     norm_type: batch, # can be either batch or instance
     class_list: [0,255], # Set the list of labels the model should train on and predict
     amp: False, # Set if you want to use Automatic Mixed Precision for your operations or not - options: True, False
@@ -35,7 +35,8 @@ patience: 1
 # Set the batch size
 batch_size: 1
 # Set the initial learning rate
-learning_rate: 0.001
+learning_rate_g: 0.001
+learning_rate_d: 0.001
 # Set the learning rate scheduler i.e. the way the initial learning rate must be updated while the training progresses
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
 random_seed_validation: 42

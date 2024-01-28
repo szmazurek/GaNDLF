@@ -297,8 +297,8 @@ def training_loop_gans(
     device: str,
     params: dict,
     output_dir: Union[str, Path],
-    testing_data=Union[DataFrame, None],
-    epochs=Union[int, None],
+    testing_data: Union[DataFrame, None] = None,
+    epochs: Union[int, None] = None,
 ):
     """
     The main training loop for GANs.

@@ -2,9 +2,9 @@ from pathlib import Path
 import os, shutil, yaml
 
 
-from GANDLF.parseConfig import parseConfig
-from GANDLF.training_manager import TrainingManager
-from GANDLF.parseConfig import parseConfig
+from GANDLF.GAN.parseConfigGAN import parseConfigGAN
+from GANDLF.GAN.training_manager_gan import TrainingManagerGAN
+from GANDLF.utils import populate_header_in_parameters, parseTrainingCSV
 
 device = "cpu"
 
@@ -53,7 +53,7 @@ def write_temp_config_path(parameters_to_write):
 def test_train_segmentation_rad_2d(device):
     print("03: Starting 2D Rad segmentation tests")
     # read and parse csv
-    parameters = parseConfig(
+    parameters = parseConfigGAN(
         testingDir + "/config_generation.yaml", version_check_flag=False
     )
     training_data, parameters["headers"] = parseTrainingCSV(
@@ -77,7 +77,7 @@ def test_train_segmentation_rad_2d(device):
         parameters["nested_training"]["testing"] = -5
         parameters["nested_training"]["validation"] = -5
         sanitize_outputDir()
-        TrainingManager(
+        TrainingManagerGAN(
             dataframe=training_data,
             outputDir=outputDir,
             parameters=parameters,

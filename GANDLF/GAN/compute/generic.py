@@ -93,10 +93,15 @@ def create_pytorch_objects_gan(
         optimizer_2=optimizer_disc,
     )
     if train_csv is not None:
-        if not ("step_size" in parameters["scheduler"]):
-            parameters["scheduler"]["step_size"] = (
+        if not ("step_size" in parameters["scheduler_g"]):
+            parameters["scheduler_g"]["step_size"] = (
                 parameters["training_samples_size"]
-                / parameters["learning_rate"]
+                / parameters["learning_rate_g"]
+            )
+        if not ("step_size" in parameters["scheduler_d"]):
+            parameters["scheduler_g"]["step_size"] = (
+                parameters["training_samples_size"]
+                / parameters["learning_rate_d"]
             )
 
         scheduler_gen, scheduler_disc = get_scheduler_gan(parameters)
@@ -124,7 +129,6 @@ def create_pytorch_objects_gan(
     ]
     for key in generator_keys_to_remove:
         parameters.pop(key, None)
-
     return (
         model,
         optimizer_gen,

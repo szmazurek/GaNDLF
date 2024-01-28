@@ -3,7 +3,7 @@ import os, sys, pickle, subprocess, shutil
 from sklearn.model_selection import KFold
 from pathlib import Path
 
-from GANDLF.GAN.compute import training_loop_gans
+from GANDLF.GAN.compute.training_loop import training_loop_gans
 from GANDLF.utils import get_dataframe
 
 
