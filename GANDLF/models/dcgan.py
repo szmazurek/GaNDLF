@@ -52,7 +52,7 @@ class _GneratorDCGAN(nn.Module):
         )
         self.feature_extractor.add_module("norm1", norm(bn_size))
         self.feature_extractor.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv2t",
@@ -62,7 +62,7 @@ class _GneratorDCGAN(nn.Module):
             "norm2", norm(bn_size // growth_rate)
         )
         self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv3t",
@@ -79,7 +79,7 @@ class _GneratorDCGAN(nn.Module):
             "norm3", norm(bn_size // (growth_rate**2))
         )
         self.feature_extractor.add_module(
-            "leaky_relu3", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv4t",
@@ -221,7 +221,7 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(num_input_features, bn_size, 4, 2, 1, bias=False),
         )
         self.feature_extractor.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv2",
@@ -229,7 +229,7 @@ class _DiscriminatorDCGAN(nn.Module):
         )
         self.feature_extractor.add_module("norm2", norm(bn_size * growth_rate))
         self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv3",
@@ -246,7 +246,7 @@ class _DiscriminatorDCGAN(nn.Module):
             "norm3", norm(bn_size * (growth_rate**2))
         )
         self.feature_extractor.add_module(
-            "leaky_relu3", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv4",
@@ -272,7 +272,7 @@ class _DiscriminatorDCGAN(nn.Module):
         )
         self.classifier.add_module("dropout1", nn.Dropout(drop_rate))
         self.classifier.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.classifier.add_module("linear2", nn.Linear(128, 1))
         self.classifier.add_module("sigmoid", nn.Sigmoid())

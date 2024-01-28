@@ -116,6 +116,8 @@ def train_network_gan(
     ):
         #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
         optimizer_d.zero_grad()
+        optimizer_g.zero_grad()
+
         image_real = (
             torch.cat(
                 [subject[key][torchio.DATA] for key in params["channel_keys"]],
@@ -176,7 +178,6 @@ def train_network_gan(
                         value=params["clip_grad"],
                         mode=params["clip_mode"],
                     )
-
         #### DISCRIMINATOR STEP WITH ALL FAKE LABELS ####
         latent_vector = generate_latent_vector(
             current_batch_size,
@@ -195,6 +196,7 @@ def train_network_gan(
         )
 
         nan_loss = torch.isnan(loss_disc_fake)
+
         if params["model"]["amp"]:
             with torch.cuda.amp.autocast():
                 # if loss is nan, don't backprop and don't step optimizer
@@ -220,26 +222,34 @@ def train_network_gan(
                         value=params["clip_grad"],
                         mode=params["clip_mode"],
                     )
-        loss_disc = (loss_disc_real + loss_disc_fake) / 2
+        loss_disc = loss_disc_real + loss_disc_fake
         if not nan_loss:
             total_epoch_train_loss_disc += loss_disc.detach().cpu().item()
         optimizer_d.step()
+        optimizer_d.zero_grad()
         ### GENERATOR STEP ###
-        optimizer_g.zero_grad()
         label_fake = label_real.fill_(1)
-        # TODO where do I use metrics?
+        # TODO should we really use THE SAME fake images?
         loss_gen, calculated_metrics, output_gen_step, _ = step_gan(
-            model, fake_images, label_fake, params, secondary_images=image_real
+            model,
+            fake_images.detach(),
+            label_fake,
+            params,
+            secondary_images=image_real,
         )
 
         nan_loss = torch.isnan(loss_gen)
+        second_order = (
+            hasattr(optimizer_g, "is_second_order")
+            and optimizer_g.is_second_order
+        )
         if params["model"]["amp"]:
             with torch.cuda.amp.autocast():
                 # if loss is nan, don't backprop and don't step optimizer
                 if not nan_loss:
                     scaler(
                         loss=loss_gen,
-                        optimizer=optimizer_d,
+                        optimizer=optimizer_g,
                         clip_grad=params["clip_grad"],
                         clip_mode=params["clip_mode"],
                         parameters=model_parameters_exclude_head(
@@ -259,6 +269,7 @@ def train_network_gan(
                         mode=params["clip_mode"],
                     )
         optimizer_g.step()
+        optimizer_g.zero_grad()
         if not nan_loss:
             total_epoch_train_loss_gen += loss_gen.detach().cpu().item()
     average_epoch_train_loss_gen = total_epoch_train_loss_gen / len(
