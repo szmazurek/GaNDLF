@@ -37,18 +37,28 @@ def get_scheduler_gan(params):
     Returns:
         model (object): The scheduler definition.
     """
-    scheduler_gen_type = params["scheduler_gen"]["type"]
-    scheduler_disc_type = params["scheduler_disc"]["type"]
+    scheduler_gen_type = params["scheduler_g"]["type"]
+    scheduler_disc_type = params["scheduler_d"]["type"]
     if scheduler_gen_type in global_schedulers_dict:
         scheduler_gen_function = global_schedulers_dict[scheduler_gen_type]
+        # a trick for compatibility with wrap_torch.py wrappers
+        params["scheduler"] = params["scheduler_g"]
+        params["optimizer_object"] = params["optimizer_gen_object"]
         scheduler_gen = scheduler_gen_function(params)
+        del params["scheduler"]
+        del params["optimizer_object"]
     else:
         raise ValueError(
             "Genertor scheduler type %s not found" % scheduler_gen_type
         )
     if scheduler_disc_type in global_schedulers_dict:
         scheduler_disc_function = global_schedulers_dict[scheduler_disc_type]
+        # a trick for compatibility with wrap_torch.py wrappers
+        params["scheduler"] = params["scheduler_d"]
+        params["optimizer_object"] = params["optimizer_disc_object"]
         scheduler_disc = scheduler_disc_function(params)
+        del params["scheduler"]
+        del params["optimizer_object"]
     else:
         raise ValueError(
             "Discriminator scheduler type %s not found" % scheduler_disc_type

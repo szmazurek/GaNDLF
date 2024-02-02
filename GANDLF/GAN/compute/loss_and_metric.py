@@ -50,7 +50,7 @@ def get_loss_gans(predictions: Tensor, labels: Tensor, params: dict) -> Tensor:
                 + params["loss_function"]
             )
 
-    loss = loss_function(predictions, labels, params)
+    loss = loss_function(predictions, labels)
     return loss
 
 

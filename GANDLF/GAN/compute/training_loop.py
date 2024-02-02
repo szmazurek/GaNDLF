@@ -29,10 +29,33 @@ from GANDLF.utils import (
 from GANDLF.metrics import overall_stats
 from GANDLF.logger import LoggerGAN
 from .step import step_gan
-from .forward_pass import validate_network
+from .forward_pass import validate_network_gan
 from .generic import create_pytorch_objects_gan
 from typing import Union
 from pathlib import Path
+
+
+def generate_latent_vector(
+    batch_size: int, latent_vector_size: int, dimension: int, device: str
+) -> torch.Tensor:
+    """Creates a latent vector of given size and adjusts the dimensions
+    according to the dimension parameter (for 2D or 3D).
+    Args:
+        batch_size (int): The batch size.
+        latent_vector_size (int): The latent vector size.
+        dimension (int): The dimension of the images in a given problem.
+    can be 2 for 2D or 3 for 3D.
+        device (str): The device to perform computations on.
+    Returns:
+        latent_vector (torch.Tensor): The latent vector.
+    """
+    assert dimension in [2, 3], "Dimension should be 2 (2D) or 3 (3D)"
+    latent_vector = torch.randn(
+        (batch_size, latent_vector_size, 1, 1), device=device
+    )
+    if dimension == 3:
+        latent_vector = latent_vector.unsqueeze(-1)
+    return latent_vector
 
 
 def train_network_gan(
@@ -93,6 +116,8 @@ def train_network_gan(
     ):
         #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
         optimizer_d.zero_grad()
+        optimizer_g.zero_grad()
+
         image_real = (
             torch.cat(
                 [subject[key][torchio.DATA] for key in params["channel_keys"]],
@@ -104,8 +129,8 @@ def train_network_gan(
         current_batch_size = image_real.shape[0]
 
         label_real = torch.full(
-            current_batch_size,
-            1,
+            size=(current_batch_size,),
+            fill_value=1,
             dtype=torch.float,
             device=params["device"],
         )
@@ -153,12 +178,12 @@ def train_network_gan(
                         value=params["clip_grad"],
                         mode=params["clip_mode"],
                     )
-
         #### DISCRIMINATOR STEP WITH ALL FAKE LABELS ####
-        latent_vector = torch.randn(
+        latent_vector = generate_latent_vector(
             current_batch_size,
             params["model"]["latent_vector_size"],
-            device=params["device"],
+            params["model"]["dimension"],
+            params["device"],
         )
         label_fake = label_real.fill_(0)
         fake_images = model.generator(latent_vector)
@@ -171,6 +196,7 @@ def train_network_gan(
         )
 
         nan_loss = torch.isnan(loss_disc_fake)
+
         if params["model"]["amp"]:
             with torch.cuda.amp.autocast():
                 # if loss is nan, don't backprop and don't step optimizer
@@ -196,26 +222,34 @@ def train_network_gan(
                         value=params["clip_grad"],
                         mode=params["clip_mode"],
                     )
-        loss_disc = (loss_disc_real + loss_disc_fake) / 2
+        loss_disc = loss_disc_real + loss_disc_fake
         if not nan_loss:
             total_epoch_train_loss_disc += loss_disc.detach().cpu().item()
         optimizer_d.step()
+        optimizer_d.zero_grad()
         ### GENERATOR STEP ###
-        optimizer_g.zero_grad()
         label_fake = label_real.fill_(1)
-        # TODO where do I use metrics?
+        # TODO should we really use THE SAME fake images?
         loss_gen, calculated_metrics, output_gen_step, _ = step_gan(
-            model, fake_images, label_fake, params, secondary_images=image_real
+            model,
+            fake_images.detach(),
+            label_fake,
+            params,
+            secondary_images=image_real,
         )
 
         nan_loss = torch.isnan(loss_gen)
+        second_order = (
+            hasattr(optimizer_g, "is_second_order")
+            and optimizer_g.is_second_order
+        )
         if params["model"]["amp"]:
             with torch.cuda.amp.autocast():
                 # if loss is nan, don't backprop and don't step optimizer
                 if not nan_loss:
                     scaler(
                         loss=loss_gen,
-                        optimizer=optimizer_d,
+                        optimizer=optimizer_g,
                         clip_grad=params["clip_grad"],
                         clip_mode=params["clip_mode"],
                         parameters=model_parameters_exclude_head(
@@ -235,6 +269,7 @@ def train_network_gan(
                         mode=params["clip_mode"],
                     )
         optimizer_g.step()
+        optimizer_g.zero_grad()
         if not nan_loss:
             total_epoch_train_loss_gen += loss_gen.detach().cpu().item()
     average_epoch_train_loss_gen = total_epoch_train_loss_gen / len(
@@ -297,8 +332,8 @@ def training_loop_gans(
     device: str,
     params: dict,
     output_dir: Union[str, Path],
-    testing_data=Union[DataFrame, None],
-    epochs=Union[int, None],
+    testing_data: Union[DataFrame, None] = None,
+    epochs: Union[int, None] = None,
 ):
     """
     The main training loop for GANs.
@@ -551,7 +586,7 @@ def training_loop_gans(
                 scheduler_g,
                 params,
                 epoch,
-                mode="testing",
+                mode="inference",
             )
             test_logger.write(
                 epoch,
@@ -570,3 +605,59 @@ def training_loop_gans(
         )
 
         model_dict = get_model_dict(model, params["device_id"])
+
+
+if __name__ == "__main__":
+    import argparse, pickle, pandas
+
+    torch.multiprocessing.freeze_support()
+    # parse the cli arguments here
+    parser = argparse.ArgumentParser(description="Training Loop of GANDLF")
+    parser.add_argument(
+        "-train_loader_pickle",
+        type=str,
+        help="Train loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-val_loader_pickle",
+        type=str,
+        help="Validation loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-testing_loader_pickle",
+        type=str,
+        help="Testing loader pickle",
+        required=True,
+    )
+    parser.add_argument(
+        "-parameter_pickle", type=str, help="Parameters pickle", required=True
+    )
+    parser.add_argument(
+        "-outputDir", type=str, help="Output directory", required=True
+    )
+    parser.add_argument(
+        "-device", type=str, help="Device to train on", required=True
+    )
+
+    args = parser.parse_args()
+
+    # # write parameters to pickle - this should not change for the different folds, so keeping is independent
+    parameters = pickle.load(open(args.parameter_pickle, "rb"))
+    trainingDataFromPickle = pandas.read_pickle(args.train_loader_pickle)
+    validationDataFromPickle = pandas.read_pickle(args.val_loader_pickle)
+    testingData_str = args.testing_loader_pickle
+    if testingData_str == "None":
+        testingDataFromPickle = None
+    else:
+        testingDataFromPickle = pandas.read_pickle(testingData_str)
+
+    training_loop_gans(
+        training_data=trainingDataFromPickle,
+        validation_data=validationDataFromPickle,
+        output_dir=args.outputDir,
+        device=args.device,
+        params=parameters,
+        testing_data=testingDataFromPickle,
+    )

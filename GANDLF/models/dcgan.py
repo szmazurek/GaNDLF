@@ -1,4 +1,5 @@
 """Implementation of DCGAN model."""
+
 import torch
 import torch.nn as nn
 from GANDLF.models.modelBase import ModelBase
@@ -52,7 +53,7 @@ class _GneratorDCGAN(nn.Module):
         )
         self.feature_extractor.add_module("norm1", norm(bn_size))
         self.feature_extractor.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv2t",
@@ -62,7 +63,7 @@ class _GneratorDCGAN(nn.Module):
             "norm2", norm(bn_size // growth_rate)
         )
         self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv3t",
@@ -79,7 +80,7 @@ class _GneratorDCGAN(nn.Module):
             "norm3", norm(bn_size // (growth_rate**2))
         )
         self.feature_extractor.add_module(
-            "leaky_relu3", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv4t",
@@ -107,9 +108,11 @@ class _GneratorDCGAN(nn.Module):
             self.feature_extractor.add_module(
                 "upsample",
                 nn.Upsample(
-                    size=output_patch_size[:-1]
-                    if n_dimensions == 2
-                    else output_patch_size,
+                    size=(
+                        output_patch_size[:-1]
+                        if n_dimensions == 2
+                        else output_patch_size
+                    ),
                     mode="bilinear" if n_dimensions == 2 else "trilinear",
                     align_corners=True,
                 ),
@@ -221,7 +224,7 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(num_input_features, bn_size, 4, 2, 1, bias=False),
         )
         self.feature_extractor.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv2",
@@ -229,7 +232,7 @@ class _DiscriminatorDCGAN(nn.Module):
         )
         self.feature_extractor.add_module("norm2", norm(bn_size * growth_rate))
         self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv3",
@@ -246,7 +249,7 @@ class _DiscriminatorDCGAN(nn.Module):
             "norm3", norm(bn_size * (growth_rate**2))
         )
         self.feature_extractor.add_module(
-            "leaky_relu3", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv4",
@@ -272,7 +275,7 @@ class _DiscriminatorDCGAN(nn.Module):
         )
         self.classifier.add_module("dropout1", nn.Dropout(drop_rate))
         self.classifier.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=True)
+            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.classifier.add_module("linear2", nn.Linear(128, 1))
         self.classifier.add_module("sigmoid", nn.Sigmoid())
@@ -323,12 +326,12 @@ class DCGAN(ModelBase):
 
     def __init__(self, parameters: Dict):
         ModelBase.__init__(self, parameters)
-        if not ("latent_vector_dim" in parameters):
+        if not ("latent_vector_size" in parameters["model"]):
             warn(
                 "No latent vector dimension specified. Defaulting to 100.",
                 RuntimeWarning,
             )
-            parameters["latent_vector_dim"] = 100
+            parameters["latent_vector_size"] = 100
         if not ("growth_rate" in parameters):
             parameters["growth_rate"] = 2
         if not ("bn_size" in parameters):
@@ -350,7 +353,7 @@ class DCGAN(ModelBase):
         self.generator = _GneratorDCGAN(
             self.patch_size,
             self.n_dimensions,
-            parameters["latent_vector_dim"],
+            parameters["model"]["latent_vector_size"],
             self.n_channels,
             parameters["growth_rate"],
             parameters["bn_size"],
@@ -432,3 +435,14 @@ class DCGAN(ModelBase):
             torch.Tensor: The probability that the image is real.
         """
         return self.discriminator(image)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass, implemented simply as generator_forward.
+        Parameters:
+            x (torch.Tensor): The latent vector to be used as input to
+        the generator.
+        Returns:
+            torch.Tensor: The generated image.
+        """
+        return self.generator_forward(x)
