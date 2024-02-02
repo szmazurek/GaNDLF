@@ -36,6 +36,7 @@ parameter_defaults = {
     "grid_aggregator_overlap": "crop",  # default grid aggregator overlap strategy
     "determinism": False,  # using deterministic version of computation
     "previous_parameters": None,  # previous parameters to be used for resuming training and perform sanity checking
+    "seed": 0,  # seed for random number generation
 }
 
 ## dictionary to define string defaults for appropriate options
@@ -375,10 +376,12 @@ def parseConfigGAN(config_file_path, version_check_flag=True):
                     params["data_augmentation"], "colorjitter", {}
                 )
                 for key in ["brightness", "contrast", "saturation"]:
-                    params["data_augmentation"][
-                        "colorjitter"
-                    ] = initialize_key(
-                        params["data_augmentation"]["colorjitter"], key, [0, 1]
+                    params["data_augmentation"]["colorjitter"] = (
+                        initialize_key(
+                            params["data_augmentation"]["colorjitter"],
+                            key,
+                            [0, 1],
+                        )
                     )
                 params["data_augmentation"]["colorjitter"] = initialize_key(
                     params["data_augmentation"]["colorjitter"],
@@ -409,26 +412,28 @@ def parseConfigGAN(config_file_path, version_check_flag=True):
                     default_range = (
                         [-0.1, 0.1]
                         if augmentation_type == "hed_transform"
-                        else [-0.03, 0.03]
-                        if augmentation_type == "hed_transform_light"
-                        else [-0.95, 0.95]
+                        else (
+                            [-0.03, 0.03]
+                            if augmentation_type == "hed_transform_light"
+                            else [-0.95, 0.95]
+                        )
                     )
 
                     for key in ranges:
-                        params["data_augmentation"][
-                            "hed_transform"
-                        ] = initialize_key(
-                            params["data_augmentation"]["hed_transform"],
-                            key,
-                            default_range,
+                        params["data_augmentation"]["hed_transform"] = (
+                            initialize_key(
+                                params["data_augmentation"]["hed_transform"],
+                                key,
+                                default_range,
+                            )
                         )
 
-                    params["data_augmentation"][
-                        "hed_transform"
-                    ] = initialize_key(
-                        params["data_augmentation"]["hed_transform"],
-                        "cutoff_range",
-                        [0, 1],
+                    params["data_augmentation"]["hed_transform"] = (
+                        initialize_key(
+                            params["data_augmentation"]["hed_transform"],
+                            "cutoff_range",
+                            [0, 1],
+                        )
                     )
 
             # special case for anisotropic

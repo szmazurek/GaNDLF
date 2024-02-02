@@ -42,11 +42,13 @@ def get_fixed_latent_vector(params: dict, mode: str) -> torch.Tensor:
     ], "Mode should be 'validation' or 'inference' "
     current_rng_state = torch.get_rng_state()
     torch.manual_seed(params["seed"])
+
     latent_vector = torch.randn(
-        params["batch_size"],
-        params["model"]["latent_vector_size"],
+        (params["batch_size"], params["model"]["latent_vector_size"], 1, 1),
         device=params["device"],
     )
+    if params["model"]["dimension"] == 3:
+        latent_vector = latent_vector.unsqueeze(-1)
     torch.set_rng_state(current_rng_state)
     return latent_vector
 
@@ -99,7 +101,12 @@ def validate_network_gan(
     if params["verbose"]:
         if params["model"]["amp"]:
             print("Using Automatic mixed precision", flush=True)
-
+    if scheduler_d is None or scheduler_g is None:
+        current_output_dir = params["output_dir"]  # this is in inference mode
+    else:  # this is useful for inference
+        current_output_dir = os.path.join(
+            params["output_dir"], "output_" + mode
+        )
     pathlib.Path(current_output_dir).mkdir(parents=True, exist_ok=True)
 
     # I really do not get it
