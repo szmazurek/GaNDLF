@@ -1,3 +1,0 @@
-SubjectID,Channel_0,Label,ValueToPredict
-2,/home/szymon/code/GaNDLF/testing/data/2d_histo_segmentation/2/image.tiff,/home/szymon/code/GaNDLF/testing/data/2d_histo_segmentation/2/mask.tiff,0.9130974094307944
-1,/home/szymon/code/GaNDLF/testing/data/2d_histo_segmentation/1/image.tiff,/home/szymon/code/GaNDLF/testing/data/2d_histo_segmentation/1/mask.tiff,0.9311708767514647

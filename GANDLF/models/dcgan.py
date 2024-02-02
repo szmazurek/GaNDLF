@@ -1,4 +1,5 @@
 """Implementation of DCGAN model."""
+
 import torch
 import torch.nn as nn
 from GANDLF.models.modelBase import ModelBase
@@ -107,9 +108,11 @@ class _GneratorDCGAN(nn.Module):
             self.feature_extractor.add_module(
                 "upsample",
                 nn.Upsample(
-                    size=output_patch_size[:-1]
-                    if n_dimensions == 2
-                    else output_patch_size,
+                    size=(
+                        output_patch_size[:-1]
+                        if n_dimensions == 2
+                        else output_patch_size
+                    ),
                     mode="bilinear" if n_dimensions == 2 else "trilinear",
                     align_corners=True,
                 ),
@@ -432,3 +435,14 @@ class DCGAN(ModelBase):
             torch.Tensor: The probability that the image is real.
         """
         return self.discriminator(image)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass, implemented simply as generator_forward.
+        Parameters:
+            x (torch.Tensor): The latent vector to be used as input to
+        the generator.
+        Returns:
+            torch.Tensor: The generated image.
+        """
+        return self.generator_forward(x)

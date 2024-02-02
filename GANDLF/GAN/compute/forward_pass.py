@@ -278,7 +278,7 @@ def validate_network_gan(
             result_image = sitk.GetImageFromArray(fake_images_batch)
         else:
             result_image = sitk.GetImageFromArray(fake_images_batch.squeeze(0))
-        result_image.CopyInformation(img_for_metadata)
+        # result_image.CopyInformation(img_for_metadata)
 
         # this handles cases that need resampling/resizing
         if "resample" in params["data_preprocessing"]:
@@ -308,14 +308,14 @@ def validate_network_gan(
             subject["subject_id"][0],
             subject["subject_id"][0] + "_gen" + ext,
         )
-
+        print(path_to_save)
         sitk.WriteImage(
             result_image,
             path_to_save,
         )
 
     if scheduler_d is not None:
-        if params["scheduler"]["type"] in [
+        if params["scheduler_d"]["type"] in [
             "reduce_on_plateau",
             "reduce-on-plateau",
             "plateau",
@@ -328,7 +328,7 @@ def validate_network_gan(
         else:
             scheduler_d.step()
     if scheduler_g is not None:
-        if params["scheduler"]["type"] in [
+        if params["scheduler_g"]["type"] in [
             "reduce_on_plateau",
             "reduce-on-plateau",
             "plateau",

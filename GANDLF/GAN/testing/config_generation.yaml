@@ -42,7 +42,7 @@ learning_rate_d: 0.001
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
 random_seed_validation: 42
 random_seed_testing: 42
-
+save_output: False
 scheduler_d: triangle
 scheduler_g: triangle
 # Set which loss function you want to use - options : 'dc' - for dice only, 'dcce' - for sum of dice and CE and you can guess the next (only lower-case please)
