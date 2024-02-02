@@ -2,6 +2,7 @@
 # options: unet, resunet, fcn
 
 # For gans, added: model as dcgan, scheduler, latent_vector_size, optimizer, loss_fn
+problem_type: synthesis
 version:
   {
     minimum: 0.0.14,

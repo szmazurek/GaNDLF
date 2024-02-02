@@ -347,6 +347,7 @@ def training_loop_gans(
         testing_data (pandas.DataFrame): The data to use for testing.
         epochs (int): The number of epochs to train; if None, take from params.
     """
+
     if epochs is None:
         epochs = params["num_epochs"]
     params["device"] = device

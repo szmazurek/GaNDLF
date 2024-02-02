@@ -21,6 +21,7 @@ def TrainingManagerGAN(
         resume (bool): Whether the previous run will be resumed or not.
         reset (bool): Whether the previous run will be reset or not.
     """
+
     if reset:
         shutil.rmtree(outputDir)
         Path(outputDir).mkdir(parents=True, exist_ok=True)
@@ -264,6 +265,7 @@ def TrainingManagerGAN(
                 validationData = get_dataframe(currentValidationDataPickle)
 
             # parallel_compute_command is an empty string, thus no parallel computing requested
+
             if (not parameters["parallel_compute_command"]) or (
                 singleFoldValidation
             ):

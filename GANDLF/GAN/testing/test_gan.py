@@ -285,6 +285,7 @@ def test_train_inference_segmentation_histology_2d(device):
     parameters = parseConfigGAN(
         testingDir + "/config_generation.yaml", version_check_flag=False
     )
+
     training_data, parameters["headers"] = parseTrainingCSV(file_for_Training)
     parameters["patch_size"] = patch_size["2D"]
     parameters["modality"] = "histo"
