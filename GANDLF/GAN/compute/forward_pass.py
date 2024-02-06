@@ -22,35 +22,7 @@ from GANDLF.metrics import overall_stats
 from tqdm import tqdm
 from typing import Union, Tuple
 from GANDLF.models.modelBase import ModelBase
-
-
-def get_fixed_latent_vector(params: dict, mode: str) -> torch.Tensor:
-    """
-    Function to get the fixed latent vector for inference or validation.
-    It always starts with the seed given by user and then re-sets the
-    previous RNG state.
-    Args:
-        params (dict): The parameters for the run.
-        mode (str): The mode of operation, either 'validation' or 'inference'.
-
-    Returns:
-        latent_vector (torch.Tensor): The fixed latent vector.
-    """
-    assert mode in [
-        "validation",
-        "inference",
-    ], "Mode should be 'validation' or 'inference' "
-    current_rng_state = torch.get_rng_state()
-    torch.manual_seed(params["seed"])
-
-    latent_vector = torch.randn(
-        (params["batch_size"], params["model"]["latent_vector_size"], 1, 1),
-        device=params["device"],
-    )
-    if params["model"]["dimension"] == 3:
-        latent_vector = latent_vector.unsqueeze(-1)
-    torch.set_rng_state(current_rng_state)
-    return latent_vector
+from .generic import get_fixed_latent_vector
 
 
 def validate_network_gan(
@@ -308,7 +280,6 @@ def validate_network_gan(
             subject["subject_id"][0],
             subject["subject_id"][0] + "_gen" + ext,
         )
-        print(path_to_save)
         sitk.WriteImage(
             result_image,
             path_to_save,

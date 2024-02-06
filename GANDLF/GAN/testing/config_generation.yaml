@@ -121,3 +121,8 @@ q_max_length: 1
 q_samples_per_volume: 1
 
 q_num_workers: 0
+
+inference_config: {
+  n_generated_samples : 1, # number of samples to generate
+  batch_size: 1, # batch size for inference
+  } 
