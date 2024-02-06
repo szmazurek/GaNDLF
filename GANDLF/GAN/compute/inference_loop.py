@@ -131,3 +131,7 @@ def inference_loop(
                         ),
                         image_to_save,
                     )
+                elif parameters["model"]["dimension"] == 3:
+                    raise NotImplementedError(
+                        "3D generation saving is not yet implemented"
+                    )
