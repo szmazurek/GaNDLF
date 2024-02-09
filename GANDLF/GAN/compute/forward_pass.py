@@ -200,13 +200,15 @@ def validate_network_gan(
                         params,
                         secondary_images=None,
                     )
+
                 loss_disc_real, metrics_output, output_disc_real, _ = step_gan(
                     model,
                     image,
                     label_real,
                     params,
-                    secondary_images=fake_images[: current_batch_size - 1],
+                    secondary_images=fake_images,
                 )
+
             for metric in params["metrics"]:
                 # average over all patches for the current subject
                 total_epoch_metrics[metric] += metrics_output[metric] / len(

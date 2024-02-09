@@ -249,6 +249,19 @@ def train_network_gan(
         optimizer_g.zero_grad()
         if not nan_loss:
             total_epoch_train_loss_gen += loss_gen.detach().cpu().item()
+        for metric in calculated_metrics.keys():
+            if isinstance(total_epoch_train_metric[metric], list):
+                if len(total_epoch_train_metric[metric]) == 0:
+                    total_epoch_train_metric[metric] = np.array(
+                        calculated_metrics[metric]
+                    )
+                else:
+                    total_epoch_train_metric[metric] += np.array(
+                        calculated_metrics[metric]
+                    )
+            else:
+                total_epoch_train_metric[metric] += calculated_metrics[metric]
+
     average_epoch_train_loss_gen = total_epoch_train_loss_gen / len(
         train_dataloader
     )

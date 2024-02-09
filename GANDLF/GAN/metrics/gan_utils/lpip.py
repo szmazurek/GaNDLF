@@ -145,3 +145,7 @@ class LPIPSGandlf(Metric):
 
         """
         return self._plot(val, ax)
+
+
+if __name__ == "__main__":
+    calc = LPIPSGandlf()
