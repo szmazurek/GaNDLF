@@ -14,6 +14,8 @@ os.environ["TORCHIO_HIDE_CITATION_PROMPT"] = "1"
 
 import torch
 import cv2
+from random import seed as random_seed
+from pandas import DataFrame
 import numpy as np
 from skimage.io import imsave
 from tqdm import tqdm
@@ -24,19 +26,31 @@ from GANDLF.utils import (
     latest_model_path_end,
     print_model_summary,
 )
+from PIL import Image
+from typing import Union
+from warnings import warn
 
 
-def inference_loop(
-    device: str, parameters: dict, modelDir: str, outputDir: str = None
+def inference_loop_gans(
+    dataframe: Union[DataFrame, None],
+    device: str,
+    parameters: dict,
+    modelDir: str,
+    outputDir: str = None,
 ):
     """
-    The main training loop.
+    The main inference loop for GAN models. For now, it only generates
+    images from the generator network.
 
     Args:
+        dataframe (pandas.DataFrame): The dataframe containing the data to be used for
+    inference (NOT USED FOR NOW).
         device (str): The device to perform computations on.
         parameters (dict): The parameters dictionary.
-        modelDir (str): The path to the directory containing the model to be used for inference.
-        outputDir (str): The path to the directory where the output of the inference session will be stored.
+        modelDir (str): The path to the directory containing the model to be
+    used for inference.
+        outputDir (str): The path to the directory where the output of the
+    inference session will be stored.
     """
     # Defining our model here according to parameters mentioned in the configuration file
     print("Current model type : ", parameters["model"]["type"])
@@ -49,6 +63,12 @@ def inference_loop(
     assert (
         parameters["model"]["type"].lower() == "torch"
     ), f"The model type is not recognized: {parameters['model']['type']}"
+
+    if dataframe is not None:
+        warn(
+            "The dataframe was passed, but it's usage is not yet implemented in inference. Ignoring it."
+        )
+
     if parameters["model"]["type"].lower() == "openvino":
         raise NotImplementedError("OpenVINO inference is not yet implemented")
     pytorch_objects = create_pytorch_objects_gan(parameters, device=device)
@@ -96,7 +116,8 @@ def inference_loop(
     )  # remaining samples for last iteration
 
     print(
-        f"Running {n_iterations} generator iterations to generate {n_generated_samples} samples with batch size {batch_size}."
+        f"Running {n_iterations} generator iterations to generate {n_generated_samples} samples with batch size {batch_size}.",
+        flush=True,
     )
 
     if os.environ.get("HOSTNAME") is not None:
@@ -104,7 +125,12 @@ def inference_loop(
 
     if not os.path.exists(outputDir):
         os.makedirs(outputDir)
-
+    # set the random seeds for reproducibility if provided
+    if "seed" in parameters:
+        print(f"Setting random seed to {parameters['seed']}", flush=True)
+        torch.manual_seed(parameters["seed"])
+        np.random.seed(parameters["seed"])
+        random_seed(parameters["seed"])
     for iteration in tqdm(range(n_iterations)):
         with torch.no_grad():
             latent_vector = generate_latent_vector(
@@ -118,7 +144,7 @@ def inference_loop(
                     generated_images = model(latent_vector)
             else:
                 generated_images = model(latent_vector)
-            generated_images = generated_images.cpu()
+            generated_images = generated_images.cpu().to(torch.uint8)
             for i in range(generated_images.shape[0]):
 
                 if parameters["model"]["dimension"] == 2:

@@ -332,6 +332,14 @@ def training_loop_gans(
     params["training_data"] = training_data
     params["validation_data"] = validation_data
     params["testing_data"] = testing_data
+    if "save_every_n_epoch" not in params["model"]:
+        save_every_n_epoch = None
+        print(
+            "save_every_n_epoch not defined in the parameters. Will only save last epoch.",
+            flush=True,
+        )
+    else:
+        save_every_n_epoch = params["model"]["save_every_n_epoch"]
     testingDataDefined = True
     if params["testing_data"] is None:
         # testing_data = validation_data
@@ -583,6 +591,60 @@ def training_loop_gans(
         )
 
         model_dict = get_model_dict(model, params["device_id"])
+        if save_every_n_epoch and (epoch % save_every_n_epoch == 0):
+            save_model(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model_dict,
+                    "optimizer_gen_state_dict": optimizer_g.state_dict(),
+                    "optimizer_disc_state_dict": optimizer_d.state_dict(),
+                    "loss_gen": epoch_valid_loss_gen,
+                    "loss_disc": epoch_valid_loss_disc,
+                },
+                model,
+                params,
+                os.path.join(
+                    output_dir,
+                    params["model"]["architecture"]
+                    + "_epoch_"
+                    + str(epoch)
+                    + ".pth.tar",
+                ),
+                onnx_export=False,
+            )
+            model.train()
+        # Save the latest model
+        if os.path.exists(model_paths["latest"]):
+            os.remove(model_paths["latest"])
+        save_model(
+            {
+                "epoch": epoch,
+                "model_state_dict": model_dict,
+                "optimizer_gen_state_dict": optimizer_g.state_dict(),
+                "optimizer_disc_state_dict": optimizer_d.state_dict(),
+                "loss_gen": epoch_valid_loss_gen,
+                "loss_disc": epoch_valid_loss_disc,
+            },
+            model,
+            params,
+            model_paths["latest"],
+            onnx_export=False,
+        )
+        print("Latest model saved.")
+
+    end_time = time.time()
+    print(
+        "Total time to finish Training : ",
+        (end_time - start_time) / 60,
+        " mins",
+        flush=True,
+    )
+    # for now this will never be executed, as we do not have
+    # a concept of best model established for GANs yet
+    if os.path.exists(model_paths["best"]):
+        optimize_and_save_model(
+            model, params, model_paths["best"], onnx_export=True
+        )
 
 
 if __name__ == "__main__":

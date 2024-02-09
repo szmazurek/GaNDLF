@@ -6,6 +6,7 @@ from GANDLF.cli import (
 )
 from GANDLF.GAN.parseConfigGAN import parseConfigGAN
 from GANDLF.GAN.training_manager_gan import TrainingManagerGAN
+from GANDLF.GAN.inference_manager_gan import InferenceManagerGAN
 from GANDLF.utils import (
     populate_header_in_parameters,
     parseTrainingCSV,
@@ -244,6 +245,55 @@ def test_train_generation_rad_3d(device):
             resume=False,
             reset=True,
         )
+
+    sanitize_outputDir()
+
+    print("passed")
+
+
+def test_train_inference_optimize_segmentation_rad_2d(device):
+    print("14: Starting 2D Rad segmentation tests for optimization")
+    # read and parse csv
+    parameters = parseConfigGAN(
+        testingDir + "/config_generation.yaml", version_check_flag=False
+    )
+    training_data, parameters["headers"] = parseTrainingCSV(
+        inputDir + "/train_2d_rad_segmentation.csv"
+    )
+    parameters["patch_size"] = patch_size["2D"]
+    parameters["modality"] = "rad"
+    parameters["model"]["dimension"] = 2
+    parameters["model"]["class_list"] = [0, 255]
+    parameters["model"]["amp"] = True
+    parameters["save_output"] = True
+    parameters["model"]["num_channels"] = 3
+    parameters["metrics"] = ["ssim"]
+    parameters["model"]["architecture"] = "dcgan"
+    parameters["model"]["onnx_export"] = True
+    parameters["model"]["print_summary"] = False
+    parameters = populate_header_in_parameters(
+        parameters, parameters["headers"]
+    )
+    sanitize_outputDir()
+    TrainingManagerGAN(
+        dataframe=training_data,
+        outputDir=outputDir,
+        parameters=parameters,
+        device=device,
+        resume=False,
+        reset=True,
+    )
+
+    ## testing inference
+    # for model_type in all_model_type:
+    parameters["model"]["type"] = "torch"
+    parameters["output_dir"] = outputDir  # this is in inference mode
+    InferenceManagerGAN(
+        dataframe=training_data,
+        modelDir=outputDir,
+        parameters=parameters,
+        device=device,
+    )
 
     sanitize_outputDir()
 
