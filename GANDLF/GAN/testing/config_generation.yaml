@@ -18,6 +18,7 @@ model:
     norm_type: batch, # can be either batch or instance
     class_list: [0,255], # Set the list of labels the model should train on and predict
     amp: False, # Set if you want to use Automatic Mixed Precision for your operations or not - options: True, False
+    save_every_n_epochs: 1, # Set the frequency of saving the model
     # n_channels: 3, # set the input channels - useful when reading RGB or images that have vectored pixel types
   }
 metrics:
@@ -121,3 +122,8 @@ q_max_length: 1
 q_samples_per_volume: 1
 
 q_num_workers: 0
+
+inference_config: {
+  n_generated_samples : 1, # number of samples to generate
+  batch_size: 1, # batch size for inference
+  } 

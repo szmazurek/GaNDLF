@@ -83,7 +83,8 @@ def optimize_and_save_model(model, params, path, onnx_export=True):
                         input_shape[2],
                     )
                 )
-            # test for GANS
+            # test for GANS, needs checking
+            # if it properly loads
 
             if params["problem_type"] == "synthesis":
                 dummy_input = torch.randn(
