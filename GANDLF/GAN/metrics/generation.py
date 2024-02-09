@@ -43,7 +43,6 @@ def _calculator_ssim(
         )
         reduction = "elementwise_mean"
 
-    # print(real_images.shape)
     if params["model"]["dimension"] == 2:
         real_images = real_images.squeeze(-1)
     ssim = tm.image.StructuralSimilarityIndexMeasure(reduction=reduction)  # type: ignore

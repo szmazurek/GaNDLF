@@ -214,7 +214,10 @@ def train_network_gan(
             params,
             secondary_images=image_real,
         )
-
+        print("Fake images shape", fake_images.shape)
+        print("Real images shape", image_real.shape)
+        print("Fake images min max", fake_images.min(), fake_images.max())
+        print("Real images min max", image_real.min(), image_real.max())
         nan_loss = torch.isnan(loss_gen)
         second_order = (
             hasattr(optimizer_g, "is_second_order")

@@ -124,7 +124,7 @@ class _GneratorDCGAN(nn.Module):
                 ),
             )
 
-        self.feature_extractor.add_module("tanh", nn.Tanh())
+        # self.feature_extractor.add_module("sigmoid", nn.Sigmoid())
 
     @staticmethod
     def _output_shape_matching(

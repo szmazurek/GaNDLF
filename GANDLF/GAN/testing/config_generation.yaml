@@ -24,7 +24,7 @@ model:
   }
 metrics:
   - ssim
-  - fid
+  # - fid
   - lpips
 metrics_config:
   {
@@ -49,7 +49,7 @@ modality: rad
 # Patch size during training - 2D patch for breast images since third dimension is not patched 
 patch_size: [128,128]
 # Number of epochs
-num_epochs: 1
+num_epochs: 1000
 patience: 1
 # Set the batch size
 batch_size: 2

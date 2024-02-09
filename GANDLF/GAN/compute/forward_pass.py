@@ -245,6 +245,8 @@ def validate_network_gan(
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
         fake_images_batch = fake_images.cpu().numpy()
+        print(np.min(fake_images_batch), np.max(fake_images_batch))
+
         # perform postprocessing before reverse one-hot encoding here
 
         # if jpg detected, convert to 8-bit arrays
@@ -255,6 +257,7 @@ def validate_network_gan(
             ".png",
         ]:
             fake_images_batch = fake_images_batch.astype(np.uint8)
+            print(np.min(fake_images_batch), np.max(fake_images_batch))
 
         ## special case for 2D
         if image.shape[-1] > 1:

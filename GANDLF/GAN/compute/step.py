@@ -91,8 +91,10 @@ def step_gan(
     loss, metric_output = get_loss_and_metrics_gans(
         image, secondary_images, label, output, params
     )
+
     if params["model"]["dimension"] == 2:
         output = torch.unsqueeze(output, -1)
         if "medcam_enabled" in params and params["medcam_enabled"]:
             attention_map = torch.unsqueeze(attention_map, -1)
+
     return loss, metric_output, output, attention_map
