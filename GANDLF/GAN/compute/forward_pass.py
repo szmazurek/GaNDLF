@@ -95,11 +95,11 @@ def validate_network_gan(
     # Set the model to valid
     if params["model"]["type"] == "torch":
         model.eval()
-    FIXED_LATENT_VECTOR = get_fixed_latent_vector(params, mode)
 
     for batch_idx, (subject) in enumerate(
         tqdm(dataloader, desc="Looping over " + mode + " data")
     ):
+
         if params["verbose"]:
             print("== Current subject:", subject["subject_id"], flush=True)
 
@@ -183,7 +183,16 @@ def validate_network_gan(
                 if (
                     batch_idx == 0
                 ):  # genereate the fake images only ONCE, as they are fixed
-                    fake_images = model.generator(FIXED_LATENT_VECTOR)
+                    original_batch_size = params["batch_size"]
+                    params["batch_size"] = (
+                        1  # set this for patch-wise inference
+                    )
+                    fake_images = model.generator(
+                        get_fixed_latent_vector(params, mode)
+                    )
+                    params["batch_size"] = (
+                        original_batch_size  # restore the param
+                    )
                     loss_fake, _, output_disc_fake, _ = step_gan(
                         model,
                         fake_images,

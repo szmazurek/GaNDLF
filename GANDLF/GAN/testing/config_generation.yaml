@@ -3,6 +3,7 @@
 
 # For gans, added: model as dcgan, scheduler, latent_vector_size, optimizer, loss_fn
 problem_type: synthesis
+track_memory_usage : True
 version:
   {
     minimum: 0.0.14,
@@ -33,10 +34,10 @@ modality: rad
 # Patch size during training - 2D patch for breast images since third dimension is not patched 
 patch_size: [128,128]
 # Number of epochs
-num_epochs: 1
+num_epochs: 100
 patience: 1
 # Set the batch size
-batch_size: 1
+batch_size: 2
 # Set the initial learning rate
 learning_rate_g: 0.001
 learning_rate_d: 0.001
@@ -124,6 +125,6 @@ q_samples_per_volume: 1
 q_num_workers: 0
 
 inference_config: {
-  n_generated_samples : 1, # number of samples to generate
-  batch_size: 1, # batch size for inference
+  n_generated_samples : 64, # number of samples to generate
+  batch_size: 6, # batch size for inference
   } 
