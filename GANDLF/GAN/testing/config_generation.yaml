@@ -25,6 +25,12 @@ model:
 metrics:
   - ssim
 
+metrics_config:
+  {
+    ssim: {
+      "reduction": none}
+  }
+
 verbose: True
 inference_mechanism: {
   grid_aggregator_overlap: average,

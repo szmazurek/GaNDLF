@@ -1,6 +1,7 @@
 """
 All the metrics are to be called from here
 """
+
 from GANDLF.losses.regression import MSE_loss, CEL
 from .segmentation import (
     multi_class_dice,
@@ -42,6 +43,7 @@ from .synthesis import (
     ncc_max,
     ncc_min,
 )
+from GANDLF.GAN.metrics.generation import SSIM, FID, LPIPS
 import GANDLF.metrics.classification as classification
 import GANDLF.metrics.regression as regression
 import GANDLF.GAN.metrics.generation as generation
@@ -83,6 +85,9 @@ global_metrics_dict = {
     "specificity_segmentation_per_label": specificity_segmentation_per_label,
     "jaccard": jaccard,
     "jaccard_per_label": jaccard_per_label,
+    "ssim": SSIM,
+    "fid": FID,
+    "lpips": LPIPS,
 }
 
 

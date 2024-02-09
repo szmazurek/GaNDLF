@@ -1,42 +1,15 @@
 import torch
 import torchmetrics as tm
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 from .gan_utils.lpip import LPIPSGandlf
-
-
-def overall_stats(
-    generated_images: torch.Tensor,
-    real_images: torch.Tensor,
-    params: Dict[str, Any],
-):
-    """
-    Generates a dictionary of metrics calculated on the overall generated
-    images and real images.
-    Args:
-        generated_images (torch.Tensor): The generated images.
-        real_images (torch.Tensor): The real images.
-        params (dict): The parameter dictionary containing training and data
-    information.
-    Returns:
-        dict: A dictionary of metrics.
-    """
-    assert (
-        params["problem_type"] == "synthesis"
-    ), "Only synthesis is supported for these stats"
-    output_metrics = {}
-    reduction_types_keys = {
-        "elementwise_mean": "elementwise_mean",
-        "none": "none",
-        "sum": "sum",
-    }
-    # TODO
+from .gan_utils.fid import FrechetInceptionDistance
 
 
 def _calculator_ssim(
     generated_images: torch.Tensor,
     real_images: torch.Tensor,
-    reduction: str,
+    params: Dict[str, Any],
 ) -> torch.Tensor:
     """
     This function computes the SSIM between the generated images and the real
@@ -45,10 +18,20 @@ def _calculator_ssim(
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        reduction (str): The reduction type.
+        params (dict): The parameter dictionary containing training and data
     Returns:
         torch.Tensor: The SSIM score.
     """
+    if "ssim" in params["metrics_config"].keys():
+        reduction = (
+            params["metrics_config"]["ssim"]["reduction"]
+            if "reduction" in params["metrics_config"]["ssim"]
+            else "mean"
+        )
+    # print(real_images.shape)
+    if params["model"]["dimension"] == 2:
+        real_images = real_images.squeeze()
+        generated_images = generated_images.squeeze()
     ssim = tm.image.StructuralSimilarityIndexMeasure(reduction=reduction)
     return ssim(generated_images, real_images)
 
@@ -56,7 +39,7 @@ def _calculator_ssim(
 def _calculator_FID(
     generated_images: torch.Tensor,
     real_images: torch.Tensor,
-    n_input_channels: int,
+    params: Dict[str, Any],
 ) -> torch.Tensor:
     """This function computes the FID between the generated images and the
     real images. Except for the params specified below, the rest of the params
@@ -68,10 +51,13 @@ def _calculator_FID(
     Returns:
         torch.Tensor: The FID score.
     """
-    fid_metric = tm.image.fid.FrechetInceptionDistance(
-        feature=1024,
+    if params["model"]["dimension"] != 2:
+        raise ValueError("FID is only supported for 2D images")
+    fid_metric = FrechetInceptionDistance(
+        feature=2048,
         normalize=True,
     )
+    n_input_channels = params["model"]["num_channels"]
     if n_input_channels == 1:
         # need manual patching for single channel data
         fid_metric.get_submodule("inception")._modules[
@@ -108,11 +94,7 @@ def _calculator_FID(
 def _calculator_LPIPS(
     generated_images: torch.Tensor,
     real_images: torch.Tensor,
-    net_type: str,
-    n_input_channels: int,
-    n_dim: int,
-    reduction: str = "mean",
-    converter_type: Optional[str] = None,
+    params: Dict[str, Any],
 ) -> torch.Tensor:
     """This function computes the LPIPS between the generated images and the
     real images. Except for the params specified below, the rest of the params
@@ -120,18 +102,51 @@ def _calculator_LPIPS(
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        reduction (str): The reduction type, one of 'mean' or 'sum'
         n_input_channels (int): The number of input channels.
+        n_dim (int): The number of dimensions.
+        net_type (Literal["alex", "squeeze", "vgg"], optional): The network type.
+    Defaults to "squeeze".
+        reduction (Literal["mean", "sum"], optional): The reduction type.
+    Defaults to "mean".
+        converter_type (Literal["soft", "acs", "conv3d], optional): The converter
+    type from ACS. Defaults to "soft".
     Returns:
         torch.Tensor: The LPIP score.
     """
+
+    def _get_metric_params(
+        params: Dict[str, Any]
+    ) -> Tuple[int, int, str, str, str]:
+        """This function returns the metric parameters from config."""
+        n_input_channels = params["model"]["num_channels"]
+        n_dim = params["model"]["dimension"]
+        net_type = (
+            params["metrics"]["lpips"]["net_type"]
+            if "net_type" in params["metrics"]["lpips"]
+            else "squeeze"
+        )
+        reduction = (
+            params["metrics"]["lpips"]["reduction"]
+            if "reduction" in params["metrics"]["lpips"]
+            else "mean"
+        )
+        converter_type = (
+            params["metrics"]["lpips"]["converter_type"]
+            if "converter_type" in params["metrics"]["lpips"]
+            else "soft"
+        )
+        return n_input_channels, n_dim, net_type, reduction, converter_type
+
+    n_input_channels, n_dim, net_type, reduction, converter_type = (
+        _get_metric_params(params)
+    )
     lpips_metric = LPIPSGandlf(
-        net_type=net_type,
+        net_type=net_type,  # type: ignore
         normalize=True,
-        reduction=reduction,
+        reduction=reduction,  # type: ignore
         n_dim=n_dim,
         n_channels=n_input_channels,
-        converter_type=converter_type,
+        converter_type=converter_type,  # type: ignore
     )
 
     # check input dtype
@@ -156,3 +171,66 @@ def _calculator_LPIPS(
         )
         real_images = real_images / 255.0
     return lpips_metric(generated_images, real_images)
+
+
+def SSIM(
+    generated_images: torch.Tensor,
+    real_images: torch.Tensor,
+    params: Dict[str, Any],
+) -> torch.Tensor:
+    """
+    This function computes the SSIM between the generated images and the real
+    images. Except for the params specified below, the rest of the params are
+    default from torchmetrics.
+    Args:
+        generated_images (torch.Tensor): The generated images.
+        real_images (torch.Tensor): The real images.
+        params (dict): The parameter dictionary containing training and data
+    information.
+    Returns:
+        torch.Tensor: The SSIM score.
+    """
+    return _calculator_ssim(generated_images, real_images, params)
+
+
+def FID(
+    generated_images: torch.Tensor,
+    real_images: torch.Tensor,
+    params: Dict[str, Any],
+) -> torch.Tensor:
+    """This function computes the FID between the generated images and the
+    real images. Except for the params specified below, the rest of the params
+    are default from torchmetrics.
+    Args:
+        generated_images (torch.Tensor): The generated images.
+        real_images (torch.Tensor): The real images.
+        n_input_channels (int): The number of input channels.
+    Returns:
+        torch.Tensor: The FID score.
+    """
+    return _calculator_FID(generated_images, real_images, params)
+
+
+def LPIPS(
+    generated_images: torch.Tensor,
+    real_images: torch.Tensor,
+    params: Dict[str, Any],
+) -> torch.Tensor:
+    """This function computes the LPIPS between the generated images and the
+    real images. Except for the params specified below, the rest of the params
+    are default from torchmetrics.
+    Args:
+        generated_images (torch.Tensor): The generated images.
+        real_images (torch.Tensor): The real images.
+        n_input_channels (int): The number of input channels.
+        n_dim (int): The number of dimensions.
+        net_type (Literal["alex", "squeeze", "vgg"], optional): The network type.
+    Defaults to "squeeze".
+        reduction (Literal["mean", "sum"], optional): The reduction type.
+    Defaults to "mean".
+        converter_type (Literal["soft", "acs", "conv3d], optional): The converter
+    type from ACS. Defaults to "soft".
+    Returns:
+        torch.Tensor: The LPIP score.
+    """
+    return _calculator_LPIPS(generated_images, real_images, params)

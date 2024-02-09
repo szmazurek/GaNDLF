@@ -1,6 +1,7 @@
 """
 All the segmentation metrics are to be called from here
 """
+
 import sys
 import torch
 import numpy as np
@@ -96,7 +97,9 @@ def __surface_distances(result, reference, voxelspacing=None, connectivity=1):
     result = np.atleast_1d(result.astype(bool))
     reference = np.atleast_1d(reference.astype(bool))
     if voxelspacing is not None:
-        voxelspacing = _ni_support._normalize_sequence(voxelspacing, result.ndim)
+        voxelspacing = _ni_support._normalize_sequence(
+            voxelspacing, result.ndim
+        )
         voxelspacing = np.asarray(voxelspacing, dtype=np.float64)
         if not voxelspacing.flags.contiguous:
             voxelspacing = voxelspacing.copy()
@@ -111,7 +114,9 @@ def __surface_distances(result, reference, voxelspacing=None, connectivity=1):
         return 0
 
     # extract only 1-pixel border line of objects
-    result_border = result ^ binary_erosion(result, structure=footprint, iterations=1)
+    result_border = result ^ binary_erosion(
+        result, structure=footprint, iterations=1
+    )
     reference_border = reference ^ binary_erosion(
         reference, structure=footprint, iterations=1
     )
@@ -256,7 +261,9 @@ def _calculator_sensitivity_specificity(
                 avg_counter += 1
 
     if per_label:
-        return torch.tensor(sensitivity_per_label), torch.tensor(specificity_per_label)
+        return torch.tensor(sensitivity_per_label), torch.tensor(
+            specificity_per_label
+        )
     else:
         return torch.tensor(sensitivity / avg_counter), torch.tensor(
             specificity / avg_counter
@@ -370,7 +377,9 @@ def hd95(inp, target, params):
 
 
 def hd95_per_label(inp, target, params):
-    return _calculator_generic(inp, target, params, percentile=95, per_label=True)
+    return _calculator_generic(
+        inp, target, params, percentile=95, per_label=True
+    )
 
 
 def hd100(inp, target, params):
@@ -378,11 +387,15 @@ def hd100(inp, target, params):
 
 
 def hd100_per_label(inp, target, params):
-    return _calculator_generic(inp, target, params, percentile=100, per_label=True)
+    return _calculator_generic(
+        inp, target, params, percentile=100, per_label=True
+    )
 
 
 def nsd(inp, target, params):
-    return _calculator_generic(inp, target, params, percentile=100, surface_dice=True)
+    return _calculator_generic(
+        inp, target, params, percentile=100, surface_dice=True
+    )
 
 
 def nsd_per_label(inp, target, params):
@@ -397,7 +410,9 @@ def sensitivity(inp, target, params):
 
 
 def sensitivity_per_label(inp, target, params):
-    s, _ = _calculator_sensitivity_specificity(inp, target, params, per_label=True)
+    s, _ = _calculator_sensitivity_specificity(
+        inp, target, params, per_label=True
+    )
     return s
 
 
@@ -407,7 +422,9 @@ def specificity_segmentation(inp, target, params):
 
 
 def specificity_segmentation_per_label(inp, target, params):
-    _, p = _calculator_sensitivity_specificity(inp, target, params, per_label=True)
+    _, p = _calculator_sensitivity_specificity(
+        inp, target, params, per_label=True
+    )
     return p
 
 
