@@ -94,7 +94,6 @@ def train_network_gan(
         #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
         optimizer_d.zero_grad()
         optimizer_g.zero_grad()
-
         image_real = (
             torch.cat(
                 [subject[key][torchio.DATA] for key in params["channel_keys"]],

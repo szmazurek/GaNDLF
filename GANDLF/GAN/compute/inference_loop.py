@@ -146,7 +146,6 @@ def inference_loop_gans(
                 generated_images = model(latent_vector)
             generated_images = generated_images.cpu().to(torch.uint8)
             for i in range(generated_images.shape[0]):
-
                 if parameters["model"]["dimension"] == 2:
                     image_to_save = (
                         generated_images[i].permute(1, 2, 0).numpy()

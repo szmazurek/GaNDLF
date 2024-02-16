@@ -41,7 +41,7 @@ batch_size: 1
 learning_rate: 0.001
 # Set the learning rate scheduler i.e. the way the initial learning rate must be updated while the training progresses
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
-scheduler: triangle
+# scheduler: triangle
 # Set which loss function you want to use - options : 'dc' - for dice only, 'dcce' - for sum of dice and CE and you can guess the next (only lower-case please)
 # options: dc (dice only), ce (), dcce (sume of dice and ce), mse (), ...
 loss_function: dc

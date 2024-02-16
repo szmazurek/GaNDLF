@@ -124,7 +124,7 @@ class _GneratorDCGAN(nn.Module):
                 ),
             )
 
-        # self.feature_extractor.add_module("sigmoid", nn.Sigmoid())
+        self.feature_extractor.add_module("tanh", nn.Tanh())
 
     @staticmethod
     def _output_shape_matching(
@@ -271,13 +271,13 @@ class _DiscriminatorDCGAN(nn.Module):
             n_dimensions,
         )
         self.classifier.add_module(
-            "linear1", nn.Linear(num_output_features, 128)
+            "linear1", nn.Linear(num_output_features, 1)
         )
-        self.classifier.add_module("dropout1", nn.Dropout(drop_rate))
-        self.classifier.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
-        )
-        self.classifier.add_module("linear2", nn.Linear(128, 1))
+        # self.classifier.add_module("dropout1", nn.Dropout(drop_rate))
+        # self.classifier.add_module(
+        #     "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
+        # )
+        # self.classifier.add_module("linear2", nn.Linear(128, 1))
         self.classifier.add_module("sigmoid", nn.Sigmoid())
 
     @staticmethod

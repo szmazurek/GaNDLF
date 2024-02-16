@@ -47,20 +47,21 @@ inference_mechanism: {
 }
 modality: rad
 # Patch size during training - 2D patch for breast images since third dimension is not patched 
-patch_size: [128,128]
+patch_size: [64,64]
 # Number of epochs
-num_epochs: 1000
+num_epochs: 30
 patience: 1
 # Set the batch size
-batch_size: 2
+batch_size: 128
 # Set the initial learning rate
-learning_rate_g: 0.001
-learning_rate_d: 0.001
+learning_rate_g: 0.0001
+learning_rate_d: 0.0001
 # Set the learning rate scheduler i.e. the way the initial learning rate must be updated while the training progresses
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
 random_seed_validation: 42
 random_seed_testing: 42
 save_output: False
+save_training : False
 scheduler_d: triangle
 scheduler_g: triangle
 # Set which loss function you want to use - options : 'dc' - for dice only, 'dcce' - for sum of dice and CE and you can guess the next (only lower-case please)
@@ -68,8 +69,9 @@ scheduler_g: triangle
 loss_function: ce
 weighted_loss: False
 # Which optimizer do you want to use - adam/sgd
-optimizer_d: adam
-optimizer_g: adam
+optimizer_d: {type: adam, betas : [0.5, 0.999]}
+optimizer_g: {type: adam, betas : [0.5, 0.999]}
+
 # the value of 'k' for cross-validation, this is the percentage of total training data to use as validation;
 # randomized split is performed using sklearn's KFold method
 # for single fold run, use '-' before the fold number
@@ -113,11 +115,11 @@ data_preprocessing:
     #   'min': 10, 
     #   'max': 75
     # }, 
-    'normalize',
+    'normalize_standardize',
     # 'resample':{
     #   'resolution': [1,2,3]
     # },
-    #'resize': [128,128], # this is generally not recommended, as it changes image properties in unexpected ways
+    'resize': [64,64], # this is generally not recommended, as it changes image properties in unexpected ways
   }
 # data postprocessing node
 data_postprocessing:
@@ -142,4 +144,8 @@ q_num_workers: 0
 inference_config: {
   n_generated_samples : 64, # number of samples to generate
   batch_size: 6, # batch size for inference
-  } 
+  }
+validation_config: {
+  n_generated_samples : 64, # number of samples to generate
+  batch_size: 12, # batch size for inference
+  }
