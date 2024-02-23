@@ -22,11 +22,9 @@ from GANDLF.utils import (
     version_check,
     write_training_patches,
     print_model_summary,
-    get_ground_truths_and_predictions_tensor,
     get_model_dict,
     print_and_format_metrics,
 )
-from GANDLF.metrics import overall_stats
 from GANDLF.logger import LoggerGAN
 from .step import step_gan
 from .forward_pass import validate_network_gan
@@ -93,8 +91,6 @@ def train_network_gan(
     ):
         #### DISCRIMINATOR STEP WITH ALL REAL LABELS ####
         optimizer_d.zero_grad()
-        optimizer_g.zero_grad()
-
         image_real = (
             torch.cat(
                 [subject[key][torchio.DATA] for key in params["channel_keys"]],
@@ -166,7 +162,7 @@ def train_network_gan(
         fake_images = model.generator(latent_vector)
         loss_disc_fake, _, output_disc_fake, _ = step_gan(
             model,
-            fake_images,
+            fake_images.detach(),
             label_fake,
             params,
             secondary_images=None,
@@ -203,18 +199,17 @@ def train_network_gan(
         if not nan_loss:
             total_epoch_train_loss_disc += loss_disc.detach().cpu().item()
         optimizer_d.step()
-        optimizer_d.zero_grad()
         ### GENERATOR STEP ###
+        optimizer_g.zero_grad()
         label_fake = label_real.fill_(1)
         # TODO should we really use THE SAME fake images?
         loss_gen, calculated_metrics, output_gen_step, _ = step_gan(
             model,
-            fake_images.detach(),
+            fake_images,
             label_fake,
             params,
             secondary_images=image_real,
         )
-
         nan_loss = torch.isnan(loss_gen)
         second_order = (
             hasattr(optimizer_g, "is_second_order")
@@ -249,6 +244,19 @@ def train_network_gan(
         optimizer_g.zero_grad()
         if not nan_loss:
             total_epoch_train_loss_gen += loss_gen.detach().cpu().item()
+        for metric in calculated_metrics.keys():
+            if isinstance(total_epoch_train_metric[metric], list):
+                if len(total_epoch_train_metric[metric]) == 0:
+                    total_epoch_train_metric[metric] = np.array(
+                        calculated_metrics[metric]
+                    )
+                else:
+                    total_epoch_train_metric[metric] += np.array(
+                        calculated_metrics[metric]
+                    )
+            else:
+                total_epoch_train_metric[metric] += calculated_metrics[metric]
+
     average_epoch_train_loss_gen = total_epoch_train_loss_gen / len(
         train_dataloader
     )
@@ -383,6 +391,7 @@ def training_loop_gans(
     ) = create_pytorch_objects_gan(
         params, training_data, validation_data, device
     )
+    print(f"Train dataloader length: {len(train_dataloader)}")
     # save the initial model
     if not os.path.exists(model_paths["initial"]):
         # TODO check if the saving is indeed correct

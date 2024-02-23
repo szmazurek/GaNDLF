@@ -20,7 +20,7 @@ from GANDLF.utils import (
 )
 from GANDLF.metrics import overall_stats
 from tqdm import tqdm
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 from GANDLF.models.modelBase import ModelBase
 from .generic import get_fixed_latent_vector
 
@@ -95,7 +95,6 @@ def validate_network_gan(
     # Set the model to valid
     if params["model"]["type"] == "torch":
         model.eval()
-    FIXED_LATENT_VECTOR = get_fixed_latent_vector(params, mode)
 
     for batch_idx, (subject) in enumerate(
         tqdm(dataloader, desc="Looping over " + mode + " data")
@@ -183,7 +182,16 @@ def validate_network_gan(
                 if (
                     batch_idx == 0
                 ):  # genereate the fake images only ONCE, as they are fixed
-                    fake_images = model.generator(FIXED_LATENT_VECTOR)
+                    original_batch_size = params["batch_size"]
+                    params[
+                        "batch_size"
+                    ] = 1  # set this for patch-wise inference
+                    fake_images = model.generator(
+                        get_fixed_latent_vector(params, mode)
+                    )
+                    params[
+                        "batch_size"
+                    ] = original_batch_size  # restore the param
                     loss_fake, _, output_disc_fake, _ = step_gan(
                         model,
                         fake_images,
@@ -191,13 +199,15 @@ def validate_network_gan(
                         params,
                         secondary_images=None,
                     )
+
                 loss_disc_real, metrics_output, output_disc_real, _ = step_gan(
                     model,
                     image,
                     label_real,
                     params,
-                    secondary_images=fake_images[: current_batch_size - 1],
+                    secondary_images=fake_images,
                 )
+
             for metric in params["metrics"]:
                 # average over all patches for the current subject
                 total_epoch_metrics[metric] += metrics_output[metric] / len(
@@ -233,32 +243,54 @@ def validate_network_gan(
             tensor=subject["1"]["data"].squeeze(0),
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
-        fake_images_batch = fake_images.cpu().numpy()
+        # generate ENTIRE batch of fake
+
         # perform postprocessing before reverse one-hot encoding here
 
         # if jpg detected, convert to 8-bit arrays
-        ext = get_filename_extension_sanitized(subject["1"]["path"][0])
-        if ext in [
-            ".jpg",
-            ".jpeg",
-            ".png",
-        ]:
-            fake_images_batch = fake_images_batch.astype(np.uint8)
+        # ext = get_filename_extension_sanitized(subject["1"]["path"][0])
+        ### TODO do not use this, temporary only for debugging
+        ext = ".png"
+        # if ext in [
+        #     ".jpg",
+        #     ".jpeg",
+        #     ".png",
+        # ]:
+        # fake_images_batch = fake_images_batch.astype(np.uint8)
+        with torch.no_grad():
+            fake_images_to_save = (
+                model.generator(get_fixed_latent_vector(params, mode)).cpu()
+                # .numpy()
+            )  # generate fake batch for saving
 
         ## special case for 2D
-        if image.shape[-1] > 1:
-            result_image = sitk.GetImageFromArray(fake_images_batch)
-        else:
-            result_image = sitk.GetImageFromArray(fake_images_batch.squeeze(0))
-        # result_image.CopyInformation(img_for_metadata)
+        # for i, fake_image_to_save in enumerate(fake_images_to_save[:16]):
+        #     fake_image_to_save = ((fake_image_to_save + 1) * (255 / 2)).astype(
+        #         np.uint8
+        #     )
+        #     # if ext in [
+        #     #     ".jpg",
+        #     #     ".jpeg",
+        #     #     ".png",
+        #     # ]:
+        #     #     fake_image_to_save = fake_image_to_save.astype(np.uint8)
+        #     print(fake_image_to_save.shape)
+        #     print(np.min(fake_image_to_save), np.max(fake_image_to_save))
+        #     if image.shape[-1] > 1:
+        #         result_image = sitk.GetImageFromArray(fake_image_to_save)
+        #     else:
+        #         result_image = sitk.GetImageFromArray(
+        #             fake_image_to_save.squeeze()
+        #         )
+        #     # result_image.CopyInformation(img_for_metadata)
 
-        # this handles cases that need resampling/resizing
-        if "resample" in params["data_preprocessing"]:
-            result_image = resample_image(
-                result_image,
-                img_for_metadata.GetSpacing(),
-                interpolator=sitk.sitkNearestNeighbor,
-            )
+        #     # this handles cases that need resampling/resizing
+        #     if "resample" in params["data_preprocessing"]:
+        #         result_image = resample_image(
+        #             result_image,
+        #             img_for_metadata.GetSpacing(),
+        #             interpolator=sitk.sitkNearestNeighbor,
+        #         )
         # Create the subject directory if it doesn't exist in the
         # current_output_dir directory
         os.makedirs(
@@ -278,13 +310,15 @@ def validate_network_gan(
             current_output_dir,
             "testing",
             subject["subject_id"][0],
-            subject["subject_id"][0] + "_gen" + ext,
+            subject["subject_id"][0] + f"_gen" + ext,
         )
-        sitk.WriteImage(
-            result_image,
-            path_to_save,
-        )
+        # sitk.WriteImage(
+        #     result_image,
+        #     path_to_save,
+        # )
+        import torchvision.utils as vutils
 
+        vutils.save_image(fake_images_to_save, path_to_save, normalize=True)
     if scheduler_d is not None:
         if params["scheduler_d"]["type"] in [
             "reduce_on_plateau",

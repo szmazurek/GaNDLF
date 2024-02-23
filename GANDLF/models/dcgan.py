@@ -7,7 +7,7 @@ from warnings import warn
 from typing import Dict, Tuple
 
 
-class _GneratorDCGAN(nn.Module):
+class _GeneratorDCGAN(nn.Module):
     """Generator for the DCGAN."""
 
     def __init__(
@@ -15,10 +15,9 @@ class _GneratorDCGAN(nn.Module):
         output_patch_size: Tuple[int, int, int],
         n_dimensions: int,
         latent_vector_dim: int,
-        num_output_features: int,
+        num_output_channels: int,
         growth_rate: int,
-        bn_size: int,
-        slope: float,
+        gen_init_channels: int,
         norm: nn.Module,
         conv: nn.Module,
     ) -> None:
@@ -30,15 +29,15 @@ class _GneratorDCGAN(nn.Module):
             n_dimensions (int): The dimensionality of the input and output.
             latent_vector_dim (int): The dimension of the latent vector
         to be used as input to the generator.
-            num_output_features (int): The number of output channels in
+            num_output_channels (int): The number of output channels in
         the generated image.
             growth_rate (int): The growth rate of the number of hidden
         features in the consecutive layers of the generator. Note that
         in this case the growth will be in reverse order, i.e. the number
         of channels will DECREASE by this amount.
-            bn_size (int): Factor to scale the number of intermediate
-        channels between the 1x1 and 3x3 convolutions.
-            slope (float): The slope of the LeakyReLU activation function.
+            gen_init_channels (int): Initial number of channels in the
+        generator, which is scaled by the growth rate in the subsequent
+        layers.
             norm (torch.nn.module): A normalization layer subclassing
         torch.nn.Module (i.e. nn.BatchNorm2d)
             conv (torch.nn.module): A convolutional layer subclassing
@@ -49,27 +48,15 @@ class _GneratorDCGAN(nn.Module):
         self.feature_extractor = nn.Sequential()
         self.feature_extractor.add_module(
             "conv1t",
-            conv(latent_vector_dim, bn_size, 4, 1, 0, bias=False),
+            conv(latent_vector_dim, gen_init_channels, 4, 1, 0, bias=False),
         )
-        self.feature_extractor.add_module("norm1", norm(bn_size))
-        self.feature_extractor.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
-        )
+        self.feature_extractor.add_module("norm1", norm(gen_init_channels))
+        self.feature_extractor.add_module("relu1", nn.ReLU(inplace=True))
         self.feature_extractor.add_module(
             "conv2t",
-            conv(bn_size, bn_size // growth_rate, 4, 2, 1, bias=False),
-        )
-        self.feature_extractor.add_module(
-            "norm2", norm(bn_size // growth_rate)
-        )
-        self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
-        )
-        self.feature_extractor.add_module(
-            "conv3t",
             conv(
-                bn_size // growth_rate,
-                bn_size // (growth_rate**2),
+                gen_init_channels,
+                gen_init_channels // growth_rate,
                 4,
                 2,
                 1,
@@ -77,16 +64,45 @@ class _GneratorDCGAN(nn.Module):
             ),
         )
         self.feature_extractor.add_module(
-            "norm3", norm(bn_size // (growth_rate**2))
+            "norm2", norm(gen_init_channels // growth_rate)
+        )
+        self.feature_extractor.add_module("relu2", nn.ReLU(inplace=True))
+        self.feature_extractor.add_module(
+            "conv3t",
+            conv(
+                gen_init_channels // growth_rate,
+                gen_init_channels // (growth_rate**2),
+                4,
+                2,
+                1,
+                bias=False,
+            ),
         )
         self.feature_extractor.add_module(
-            "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
+            "norm3", norm(gen_init_channels // (growth_rate**2))
         )
+        self.feature_extractor.add_module("relu3", nn.ReLU(inplace=True))
         self.feature_extractor.add_module(
             "conv4t",
             conv(
-                bn_size // (growth_rate**2),
-                num_output_features,
+                gen_init_channels // (growth_rate**2),
+                gen_init_channels // (growth_rate**3),
+                4,
+                2,
+                1,
+                bias=False,
+            ),
+        )
+        self.feature_extractor.add_module(
+            "norm4", norm(gen_init_channels // (growth_rate**3))
+        )
+        self.feature_extractor.add_module("relu4", nn.ReLU(inplace=True))
+
+        self.feature_extractor.add_module(
+            "conv5t",
+            conv(
+                gen_init_channels // (growth_rate**3),
+                num_output_channels,
                 4,
                 2,
                 1,
@@ -120,7 +136,7 @@ class _GneratorDCGAN(nn.Module):
             self.feature_extractor.add_module(
                 "conv5",
                 conv(
-                    num_output_features, num_output_features, 1, 1, bias=False
+                    num_output_channels, num_output_channels, 1, 1, bias=False
                 ),
             )
 
@@ -189,10 +205,9 @@ class _DiscriminatorDCGAN(nn.Module):
         self,
         input_patch_size: Tuple[int, int, int],
         n_dimensions: int,
-        num_input_features: int,
+        num_input_channels: int,
         growth_rate: int,
-        bn_size: int,
-        drop_rate: float,
+        disc_init_channels: int,
         slope: float,
         norm: nn.Module,
         conv: nn.Module,
@@ -203,12 +218,13 @@ class _DiscriminatorDCGAN(nn.Module):
             input_patch_size (Tuple[int, int,int]): The size of the
         input patch.
             n_dimensions (int): The dimensionality of the input.
-            num_input_features (int): The number of input channels in
+            num_input_channels (int): The number of input channels in
         the image to be discriminated.
             growth_rate (int): The growth rate of the number of hidden
         features in the consecutive layers of the discriminator.
-            bn_size (int): Factor to scale the number of intermediate
-        channels between the 1x1 and 3x3 convolutions.
+            disc_init_channels (int): Initial number of channels in the
+        discriminator, which is scaled by the growth rate in the subsequent
+        layers.
             drop_rate (float): The dropout rate in the classifier.
             slope (float): The slope of the LeakyReLU activation function.
             norm (torch.nn.module): A normalization layer subclassing
@@ -221,24 +237,16 @@ class _DiscriminatorDCGAN(nn.Module):
         self.classifier = nn.Sequential()
         self.feature_extractor.add_module(
             "conv1",
-            conv(num_input_features, bn_size, 4, 2, 1, bias=False),
+            conv(num_input_channels, disc_init_channels, 4, 2, 1, bias=False),
         )
         self.feature_extractor.add_module(
             "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
         )
         self.feature_extractor.add_module(
             "conv2",
-            conv(bn_size, bn_size * growth_rate, 4, 2, 1, bias=False),
-        )
-        self.feature_extractor.add_module("norm2", norm(bn_size * growth_rate))
-        self.feature_extractor.add_module(
-            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
-        )
-        self.feature_extractor.add_module(
-            "conv3",
             conv(
-                bn_size * growth_rate,
-                bn_size * (growth_rate**2),
+                disc_init_channels,
+                disc_init_channels * growth_rate,
                 4,
                 2,
                 1,
@@ -246,7 +254,24 @@ class _DiscriminatorDCGAN(nn.Module):
             ),
         )
         self.feature_extractor.add_module(
-            "norm3", norm(bn_size * (growth_rate**2))
+            "norm2", norm(disc_init_channels * growth_rate)
+        )
+        self.feature_extractor.add_module(
+            "leaky_relu2", nn.LeakyReLU(slope, inplace=False)
+        )
+        self.feature_extractor.add_module(
+            "conv3",
+            conv(
+                disc_init_channels * growth_rate,
+                disc_init_channels * (growth_rate**2),
+                4,
+                2,
+                1,
+                bias=False,
+            ),
+        )
+        self.feature_extractor.add_module(
+            "norm3", norm(disc_init_channels * (growth_rate**2))
         )
         self.feature_extractor.add_module(
             "leaky_relu3", nn.LeakyReLU(slope, inplace=False)
@@ -254,7 +279,25 @@ class _DiscriminatorDCGAN(nn.Module):
         self.feature_extractor.add_module(
             "conv4",
             conv(
-                bn_size * (growth_rate**2),
+                disc_init_channels * (growth_rate**2),
+                disc_init_channels * (growth_rate**3),
+                4,
+                2,
+                1,
+                bias=False,
+            ),
+        )
+        self.feature_extractor.add_module(
+            "norm4", norm(disc_init_channels * (growth_rate**3))
+        )
+        self.feature_extractor.add_module(
+            "leaky_relu4", nn.LeakyReLU(slope, inplace=False)
+        )
+
+        self.feature_extractor.add_module(
+            "conv5",
+            conv(
+                disc_init_channels * (growth_rate**3),
                 1,
                 4,
                 1,
@@ -267,17 +310,12 @@ class _DiscriminatorDCGAN(nn.Module):
         num_output_features = self._get_output_size_feature_extractor(
             self.feature_extractor,
             input_patch_size,
-            num_input_features,
+            num_input_channels,
             n_dimensions,
         )
         self.classifier.add_module(
-            "linear1", nn.Linear(num_output_features, 128)
+            "linear1", nn.Linear(num_output_features, 1)
         )
-        self.classifier.add_module("dropout1", nn.Dropout(drop_rate))
-        self.classifier.add_module(
-            "leaky_relu1", nn.LeakyReLU(slope, inplace=False)
-        )
-        self.classifier.add_module("linear2", nn.Linear(128, 1))
         self.classifier.add_module("sigmoid", nn.Sigmoid())
 
     @staticmethod
@@ -332,88 +370,76 @@ class DCGAN(ModelBase):
                 RuntimeWarning,
             )
             parameters["latent_vector_size"] = 100
-        if not ("growth_rate" in parameters):
-            parameters["growth_rate"] = 2
-        if not ("bn_size" in parameters):
-            parameters["bn_size"] = 4
+        if not ("growth_rate_gen" in parameters):
+            parameters["growth_rate_gen"] = 2
+        if not ("init_channels_gen" in parameters):
+            parameters["init_channels_gen"] = 512
+        if not ("growth_rate_disc" in parameters):
+            parameters["growth_rate_disc"] = 2
+        if not ("init_channels_disc" in parameters):
+            parameters["init_channels_disc"] = 64
         if not ("slope" in parameters):
             parameters["slope"] = 0.2
-        if not ("drop_rate" in parameters):
-            parameters["drop_rate"] = 0.0
-        if not ("conv1_t_stride" in parameters):
-            parameters["conv1_t_stride"] = 1
-        if not ("conv1_t_size" in parameters):
-            parameters["conv1_t_size"] = 7
         if self.Norm is None:
             warn(
                 "No normalization specified. Defaulting to BatchNorm",
                 RuntimeWarning,
             )
             self.Norm = self.BatchNorm
-        self.generator = _GneratorDCGAN(
-            self.patch_size,
-            self.n_dimensions,
-            parameters["model"]["latent_vector_size"],
-            self.n_channels,
-            parameters["growth_rate"],
-            parameters["bn_size"],
-            parameters["slope"],
-            self.Norm,
-            self.ConvTranspose,
+        self.generator = _GeneratorDCGAN(
+            output_patch_size=self.patch_size,
+            n_dimensions=self.n_dimensions,
+            latent_vector_dim=parameters["model"]["latent_vector_size"],
+            num_output_channels=self.n_channels,
+            growth_rate=parameters["growth_rate_gen"],
+            gen_init_channels=parameters["init_channels_gen"],
+            norm=self.Norm,
+            conv=self.ConvTranspose,
         )
         self.discriminator = _DiscriminatorDCGAN(
-            self.patch_size,
-            self.n_dimensions,
-            self.n_channels,
-            parameters["growth_rate"],
-            parameters["bn_size"],
-            parameters["drop_rate"],
-            parameters["slope"],
-            self.Norm,
-            self.Conv,
+            input_patch_size=self.patch_size,
+            n_dimensions=self.n_dimensions,
+            num_input_channels=self.n_channels,
+            growth_rate=parameters["growth_rate_disc"],
+            disc_init_channels=parameters["init_channels_disc"],
+            slope=parameters["slope"],
+            norm=self.Norm,
+            conv=self.Conv,
         )
-        self._init_generator_weights(self.generator, parameters["slope"])
-        self._init_discriminator_weights(
-            self.discriminator, parameters["slope"]
-        )
+        # self._init_generator_weights(self.generator)
+        # self._init_discriminator_weights(self.discriminator)
 
-    def _init_generator_weights(
-        self, generator: nn.Module, leaky_relu_slope: float
-    ) -> None:
+    def _init_generator_weights(self, generator: nn.Module) -> None:
         """
-        Initializes the weights of the generator.
+        Initializes the weights of the generator. This is mimicking the
+        original implementation of the DCGAN.
         Parameters:
-            m (torch.nn.Module): The generator module.
+            generator (torch.nn.Module): The generator module.
         """
         for m in generator.modules():
             if isinstance(m, self.ConvTranspose):
-                nn.init.kaiming_normal_(
-                    m.weight, a=leaky_relu_slope, mode="fan_out"
-                )
+                nn.init.normal_(m.weight, mean=0, std=0.02)
             elif isinstance(m, self.Norm):
                 if m.weight is not None:
-                    m.weight.data.fill_(1)
+                    nn.init.normal_(m.weight.data, 1.0, 0.02)
                 if m.bias is not None:
-                    m.bias.data.zero_()
+                    nn.init.constant_(m.bias.data, 0)
 
-    def _init_discriminator_weights(
-        self, discriminator: nn.Module, leaky_relu_slope: float
-    ) -> None:
+    def _init_discriminator_weights(self, discriminator: nn.Module) -> None:
         """
-        Initializes the weights of the discriminator.
+        Initializes the weights of the discriminator. This is mimicking the
+        original implementation of the DCGAN.
         Parameters:
-            m (torch.nn.Module): The discriminator module.
+            discriminator (torch.nn.Module): The discriminator module.
         """
         for m in discriminator.modules():
-            if isinstance(m, self.Conv):
-                nn.init.kaiming_normal_(
-                    m.weight, a=leaky_relu_slope, mode="fan_in"
-                )
+            if isinstance(m, self.ConvTranspose):
+                nn.init.normal_(m.weight, mean=0, std=0.02)
             elif isinstance(m, self.Norm):
                 if m.weight is not None:
-                    m.weight.data.fill_(1)
+                    nn.init.normal_(m.weight.data, 1.0, 0.02)
                 if m.bias is not None:
-                    m.bias.data.zero_()
+                    nn.init.constant_(m.bias.data, 0)
 
     def generator_forward(self, latent_vector: torch.Tensor) -> torch.Tensor:
         """

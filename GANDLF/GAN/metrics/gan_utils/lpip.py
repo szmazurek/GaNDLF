@@ -37,7 +37,7 @@ class LPIPSGandlf(Metric):
         normalize: bool = False,
         n_dim: int = 2,
         n_channels: int = 1,
-        converter_type: Union[str, None] = None,
+        converter_type: Literal["soft", "acs", "conv3d"] = "soft",
         **kwargs: Any,
     ):
         """Initialize the LPIPS metric for GanDLF. This metric is based on the
@@ -53,8 +53,8 @@ class LPIPSGandlf(Metric):
             normalize (bool): Whether to normalize the input images.
             n_dim (int): The number of dimensions of the input images.
             n_channels (int): The number of channels of the input images.
-            converter_type (Union[str, None]): The converter type from ACS, one of
-        'soft','asc' or 'conv3d'. If None, defaults to 'soft'.
+            converter_type (Literal["soft","acs", "conv3d]: The converter type
+        from ACS, one of 'soft','acs' or 'conv3d'. Defaults to 'soft'.
             **kwargs: Additional arguments for the metric.
         """
 
@@ -145,3 +145,7 @@ class LPIPSGandlf(Metric):
 
         """
         return self._plot(val, ax)
+
+
+if __name__ == "__main__":
+    calc = LPIPSGandlf()

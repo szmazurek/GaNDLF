@@ -37,9 +37,7 @@ def _upsample(in_tens: Tensor, out_hw: Tuple[int, ...] = (64, 64)) -> Tensor:
 
 def _normalize_tensor(in_feat: Tensor, eps: float = 1e-8) -> Tensor:
     """Normalize input tensor."""
-    norm_factor = torch.sqrt(
-        eps + torch.sum(in_feat**2, dim=1, keepdim=True)
-    )
+    norm_factor = torch.sqrt(eps + torch.sum(in_feat**2, dim=1, keepdim=True))
     return in_feat / norm_factor
 
 
@@ -117,7 +115,6 @@ class _LPIPSGandlf(nn.Module):
 
         self.n_dim = n_dim
 
-    @torch.no_grad
     def forward(
         self,
         in0: Tensor,
@@ -138,32 +135,35 @@ class _LPIPSGandlf(nn.Module):
         if self.resize is not None:
             in0_input = _resize_tensor(in0_input, size=self.resize)
             in1_input = _resize_tensor(in1_input, size=self.resize)
+        with torch.no_grad():
+            outs0, outs1 = self.net.forward(in0_input), self.net.forward(
+                in1_input
+            )
+            feats0, feats1, diffs = {}, {}, {}
 
-        outs0, outs1 = self.net.forward(in0_input), self.net.forward(in1_input)
-        feats0, feats1, diffs = {}, {}, {}
+            for kk in range(self.L):
+                feats0[kk], feats1[kk] = _normalize_tensor(
+                    outs0[kk]
+                ), _normalize_tensor(outs1[kk])
+                diffs[kk] = (feats0[kk] - feats1[kk]) ** 2
 
-        for kk in range(self.L):
-            feats0[kk], feats1[kk] = _normalize_tensor(
-                outs0[kk]
-            ), _normalize_tensor(outs1[kk])
-            diffs[kk] = (feats0[kk] - feats1[kk]) ** 2
-
-        res = []
-        for kk in range(self.L):
-            if self.spatial:
-                res.append(
-                    _upsample(
-                        self.lins[kk](diffs[kk]), out_hw=tuple(in0.shape[2:])
+            res = []
+            for kk in range(self.L):
+                if self.spatial:
+                    res.append(
+                        _upsample(
+                            self.lins[kk](diffs[kk]),
+                            out_hw=tuple(in0.shape[2:]),
+                        )
                     )
-                )
-            else:
-                res.append(
-                    _spatial_average(
-                        self.lins[kk](diffs[kk]),
-                        n_dims=self.n_dim,
-                        keep_dim=True,
+                else:
+                    res.append(
+                        _spatial_average(
+                            self.lins[kk](diffs[kk]),
+                            n_dims=self.n_dim,
+                            keep_dim=True,
+                        )
                     )
-                )
         val: Tensor = sum(res)  # type: ignore[assignment]
         if retperlayer:
             return (val, res)
@@ -237,8 +237,8 @@ def lpips_compute(
 
 
 def determine_converter(
-    converter_type: Union[str, None]
-) -> Union[None, SoftACSConverter, ACSConverter, Conv3dConverter]:
+    converter_type: Literal["soft", "acs", "conv3d"] = "soft",
+) -> Union[SoftACSConverter, ACSConverter, Conv3dConverter]:
     """Determine the converter type to use for 2D to 3D conversion.
     Args:
         converter_type: str indicating the type of converter to use for
@@ -256,7 +256,7 @@ def determine_converter(
     elif converter_type == "conv3d":
         converter = Conv3dConverter
     else:
-        raise ValueError(f"Unknown converter type {converter}")
+        raise ValueError(f"Unknown converter type {converter_type}")
     return converter
 
 
@@ -315,7 +315,7 @@ def learned_perceptual_image_patch_similarity(
     normalize: bool = False,
     n_dim: int = 2,
     n_channels: int = 1,
-    converter_type: Union[str, None] = None,
+    converter_type: Literal["soft", "acs", "conv3d"] = "soft",
 ) -> Tensor:
     """Functional Interface for The Learned Perceptual Image Patch Similarity
     (`LPIPS_`) calculates perceptual similarity between two images.
@@ -341,8 +341,7 @@ def learned_perceptual_image_patch_similarity(
     expect input to be in the ``[0,1]`` range.
         converter_type: str indicating the type of converter to use for
     converting the net into a 3D network if the input is 5D. Choose
-    between `'soft'`, `'acs'`, `'conv3d'`. If ``None`` will use
-    `'soft'` by default.
+    between `'soft'`, `'acs'`, `'conv3d'`.  Will use `'soft'` by default.
 
     Example:
         >>> import torch

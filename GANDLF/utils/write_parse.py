@@ -23,7 +23,8 @@ def writeTrainingCSV(
 
     outputToWrite = "SubjectID,"
     outputToWrite += (
-        ",".join(["Channel_" + str(i) for i, n in enumerate(channelsID_list)]) + ","
+        ",".join(["Channel_" + str(i) for i, n in enumerate(channelsID_list)])
+        + ","
     )
     if labelID is not None:
         outputToWrite += "Label"
@@ -48,7 +49,9 @@ def writeTrainingCSV(
                         currentFile = (
                             pathlib.Path(currentFile)
                             .resolve()
-                            .relative_to(pathlib.Path(outputFile).resolve().parent)
+                            .relative_to(
+                                pathlib.Path(outputFile).resolve().parent
+                            )
                             .as_posix()
                         )
                     if channel in n:
@@ -56,11 +59,12 @@ def writeTrainingCSV(
                     elif labelID is not None:
                         if labelID in n:
                             maskFile = currentFile
+                    elif labelID is None:
+                        maskFile = "none"
             if allImageFiles:
                 outputToWrite += dirs + "," + allImageFiles + maskFile + "\n"
-
     file = open(outputFile, "w")
-    file.write(outputToWrite)
+    file.write(outputToWrite.strip())
     file.close()
 
 
@@ -104,7 +108,9 @@ def parseTrainingCSV(inputTrainingCSVFile, train=True) -> (pd.DataFrame, dict):
         elif "valuetopredict" in col_lower:
             headers["predictionHeaders"].append(currentHeaderLoc)
         elif (
-            ("subject" in col_lower) or ("patient" in col_lower) or ("pid" in col_lower)
+            ("subject" in col_lower)
+            or ("patient" in col_lower)
+            or ("pid" in col_lower)
         ):
             headers["subjectIDHeader"] = currentHeaderLoc
         elif (
@@ -121,11 +127,15 @@ def parseTrainingCSV(inputTrainingCSVFile, train=True) -> (pd.DataFrame, dict):
                     "WARNING: Multiple label headers found in training CSV, only the first one will be used",
                     file=sys.stderr,
                 )
-    convert_relative_paths_in_dataframe(data_full, headers, inputTrainingCSVFile)
+    convert_relative_paths_in_dataframe(
+        data_full, headers, inputTrainingCSVFile
+    )
     return data_full, headers
 
 
-def parseTestingCSV(inputTrainingCSVFile, output_dir) -> (bool, pd.DataFrame, dict):
+def parseTestingCSV(
+    inputTrainingCSVFile, output_dir
+) -> (bool, pd.DataFrame, dict):
     """
     This function parses the input training CSV and returns a dictionary of headers and the full (randomized) data frame
 
@@ -141,7 +151,9 @@ def parseTestingCSV(inputTrainingCSVFile, output_dir) -> (bool, pd.DataFrame, di
 
     data_full, headers = parseTrainingCSV(inputTrainingCSVFile, train=False)
 
-    collision_status, data_full = handle_collisions(data_full, headers, output_dir)
+    collision_status, data_full = handle_collisions(
+        data_full, headers, output_dir
+    )
 
     # If collisions are True, raise a warning that some patients with colliding subject_id were found
     # and a new mapping_csv was created to be used and write the location of the new mapping_csv
@@ -204,7 +216,9 @@ def convert_relative_paths_in_dataframe(
         return input_dataframe
     for column in input_dataframe.columns:
         loc = input_dataframe.columns.get_loc(column)
-        if (loc == headers["labelHeader"]) or (loc in headers["channelHeaders"]):
+        if (loc == headers["labelHeader"]) or (
+            loc in headers["channelHeaders"]
+        ):
             # These entries can be considered as paths to files
             for index, entry in enumerate(input_dataframe[column]):
                 if isinstance(entry, str):

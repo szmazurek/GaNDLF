@@ -12,7 +12,6 @@ def get_metric_output(metric_function, predicted, ground_truth, params):
     metric_output = (
         metric_function(predicted, ground_truth, params).detach().cpu()
     )
-
     if metric_output.dim() == 0:
         return metric_output.item()
     else:
