@@ -107,8 +107,22 @@ class LoggerGAN:
         with open(self.filename, "a") as log_file:
             if os.stat(self.filename).st_size == 0:
                 mode_lower = mode.lower()
-                row = "epoch_no," + mode_lower + "_disc_loss,"
-                row += mode_lower + "_gen_loss,"
+                if mode_lower == "train":
+                    row = (
+                        "epoch_no,"
+                        + mode_lower
+                        + "_disc_loss,"
+                        + mode_lower
+                        + "_gen_loss,"
+                    )
+                else:
+                    row = (
+                        "epoch_no,"
+                        + mode_lower
+                        + "_disc_fake_loss,"
+                        + mode_lower
+                        + "_disc_real_loss,"
+                    )
                 row += (
                     ",".join(
                         [mode_lower + "_" + metric for metric in self.metrics]
@@ -128,7 +142,7 @@ class LoggerGAN:
             str: The parsed input value
         """
         if torch.is_tensor(numeric_input):
-            return str(numeric_input.cpu().item())
+            return str(numeric_input.cpu().item())  #
         else:
             return str(numeric_input)
 

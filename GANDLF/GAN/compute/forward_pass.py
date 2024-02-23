@@ -22,7 +22,7 @@ from GANDLF.metrics import overall_stats
 from tqdm import tqdm
 from typing import Union, Tuple, Optional
 from GANDLF.models.modelBase import ModelBase
-from .generic import get_fixed_latent_vector
+from .generic import get_fixed_latent_vector, generate_latent_vector
 
 
 def validate_network_gan(
@@ -130,7 +130,7 @@ def validate_network_gan(
         #         "grid_aggregator_overlap"
         #     ],
         # )
-
+        # TODO Do we need medcam in this case? I don't think so
         # if params["medcam_enabled"]:
         #     attention_map_aggregator = torchio.inference.GridAggregator(
         #         grid_sampler,
@@ -163,7 +163,6 @@ def validate_network_gan(
                 .float()
                 .to(params["device"])
             )
-
             current_batch_size = image.shape[0]
 
             label_real = torch.full(
@@ -178,28 +177,22 @@ def validate_network_gan(
                 dtype=torch.float,
                 device=params["device"],
             )
+            latent_vector = generate_latent_vector(
+                current_batch_size,
+                params["model"]["latent_vector_size"],
+                params["model"]["dimension"],
+                params["device"],
+            )
             with torch.no_grad():
-                if (
-                    batch_idx == 0
-                ):  # genereate the fake images only ONCE, as they are fixed
-                    original_batch_size = params["batch_size"]
-                    params[
-                        "batch_size"
-                    ] = 1  # set this for patch-wise inference
-                    fake_images = model.generator(
-                        get_fixed_latent_vector(params, mode)
-                    )
-                    params[
-                        "batch_size"
-                    ] = original_batch_size  # restore the param
-                    loss_fake, _, output_disc_fake, _ = step_gan(
-                        model,
-                        fake_images,
-                        label_fake,
-                        params,
-                        secondary_images=None,
-                    )
-
+                fake_images = model.generator(latent_vector)
+                loss_disc_fake, _, output_disc_fake, _ = step_gan(
+                    model,
+                    fake_images,
+                    label_fake,
+                    params,
+                    secondary_images=None,
+                )
+                # here, we are iterating over the patches
                 loss_disc_real, metrics_output, output_disc_real, _ = step_gan(
                     model,
                     image,
@@ -209,25 +202,28 @@ def validate_network_gan(
                 )
 
             for metric in params["metrics"]:
-                # average over all patches for the current subject
                 total_epoch_metrics[metric] += metrics_output[metric] / len(
                     patch_loader
                 )
-            total_epoch_discriminator_real_loss += loss_disc_real.cpu().item()
+            # accumulating average loss for the real and fake images over the patch loader
+
+            total_epoch_discriminator_real_loss += (
+                loss_disc_real.cpu().item() / len(patch_loader)
+            )
+            total_epoch_discriminator_fake_loss += (
+                loss_disc_fake.cpu().item() / len(patch_loader)
+            )
 
     average_epoch_metrics = {
         metric_name: total_epoch_metrics[metric_name] / len(dataloader)
         for metric_name in total_epoch_metrics
     }
+    # average the losses over all validation batches
+    total_epoch_discriminator_fake_loss /= len(dataloader)
+    total_epoch_discriminator_real_loss /= len(dataloader)
+    # TODO Aggregator is currently not used and invalid - no way
+    # to get the generator to output spatially consistent results, to be implemented
 
-    total_epoch_discriminator_fake_loss += (
-        loss_fake.cpu().item()
-    )  # fake loss is constant
-    total_epoch_discriminator_real_loss /= len(
-        dataloader
-    )  # average over all batches
-
-    # TODO is it valid?
     # aggregator.add_batch(fake_images.cpu(), patches_batch[torchio.LOCATION])
     # TODO do we use medcam in this case ever?
     # if params["medcam_enabled"]:
@@ -239,16 +235,14 @@ def validate_network_gan(
     # output_prediction = output_prediction.unsqueeze(0)
 
     if params["save_output"]:
+        print("Subject data shape" + str(subject["1"]["data"].shape))
+        print("Subject affine shape" + str(subject["1"]["affine"].shape))
         img_for_metadata = torchio.ScalarImage(
-            tensor=subject["1"]["data"].squeeze(0),
+            tensor=subject["1"]["data"].squeeze(-1),
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
-        # generate ENTIRE batch of fake
-
-        # perform postprocessing before reverse one-hot encoding here
-
         # if jpg detected, convert to 8-bit arrays
-        # ext = get_filename_extension_sanitized(subject["1"]["path"][0])
+        ext = get_filename_extension_sanitized(subject["1"]["path"][0])
         ### TODO do not use this, temporary only for debugging
         ext = ".png"
         # if ext in [
@@ -257,11 +251,75 @@ def validate_network_gan(
         #     ".png",
         # ]:
         # fake_images_batch = fake_images_batch.astype(np.uint8)
+        fixed_latent_vector = get_fixed_latent_vector(
+            batch_size=params["validation_config"]["n_generated_samples"],
+            latent_vector_size=params["model"]["latent_vector_size"],
+            dimension=params["model"]["dimension"],
+            device=params["device"],
+            seed=params.get("seed", 0),
+        )
+        # the generation takes place in batches, as there exists possi
+
         with torch.no_grad():
-            fake_images_to_save = (
-                model.generator(get_fixed_latent_vector(params, mode)).cpu()
-                # .numpy()
-            )  # generate fake batch for saving
+            fake_images_to_save = model.generator(fixed_latent_vector).cpu()
+        for i, fake_image_to_save in enumerate(fake_images_to_save):
+            fake_image_to_save = (
+                ((fake_image_to_save + 1) * (255 / 2)).unsqueeze(0).numpy()
+            )
+            # fake_image_to_save = (fake_image_to_save + 1) / 2
+
+            if ext in [
+                ".jpg",
+                ".jpeg",
+                ".png",
+            ]:
+                fake_image_to_save = fake_image_to_save.astype(np.uint8)
+
+            if image.shape[-1] > 1:
+                result_image = sitk.GetImageFromArray(fake_image_to_save)
+
+            else:
+                result_image = sitk.GetImageFromArray(
+                    fake_image_to_save.squeeze()
+                )
+
+            # result_image.CopyInformation(img_for_metadata)
+
+            # this handles cases that need resampling/resizing
+            if "resample" in params["data_preprocessing"]:
+                result_image = resample_image(
+                    result_image,
+                    img_for_metadata.GetSpacing(),
+                    interpolator=sitk.sitkNearestNeighbor,
+                )
+
+            # Create the subject directory if it doesn't exist in the
+            os.makedirs(
+                os.path.join(current_output_dir, "testing"),
+                exist_ok=True,
+            )
+            os.makedirs(
+                os.path.join(
+                    current_output_dir,
+                    "testing",
+                    subject["subject_id"][0],
+                ),
+                exist_ok=True,
+            )
+
+            path_to_save = os.path.join(
+                current_output_dir,
+                "testing",
+                subject["subject_id"][0],
+                subject["subject_id"][0] + f"_gen_{i}" + ext,
+            )
+            import torchvision.utils as vutils
+
+            # vutils.save_image(fake_image_to_save, path_to_save)
+            sitk.WriteImage(
+                result_image,
+                path_to_save,
+            )
 
         ## special case for 2D
         # for i, fake_image_to_save in enumerate(fake_images_to_save[:16]):
@@ -310,7 +368,7 @@ def validate_network_gan(
             current_output_dir,
             "testing",
             subject["subject_id"][0],
-            subject["subject_id"][0] + f"_gen" + ext,
+            subject["subject_id"][0] + f"array" + ext,
         )
         # sitk.WriteImage(
         #     result_image,
@@ -326,7 +384,6 @@ def validate_network_gan(
             "plateau",
             "reduceonplateau",
         ]:
-            # scheduler_d.step(average_epoch_discriminator_loss)
             raise NotImplementedError(
                 "Reduce on plateau scheduler not implemented for GAN"
             )
@@ -339,7 +396,6 @@ def validate_network_gan(
             "plateau",
             "reduceonplateau",
         ]:
-            # scheduler_g.step(average_epoch_generator_loss)
             raise NotImplementedError(
                 "Reduce on plateau scheduler not implemented for GAN"
             )

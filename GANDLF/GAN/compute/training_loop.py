@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import torchio
-from medcam import medcam
 from pandas import DataFrame
 from GANDLF.data import get_testing_loader
 from GANDLF.grad_clipping.grad_scaler import (
@@ -391,7 +390,6 @@ def training_loop_gans(
     ) = create_pytorch_objects_gan(
         params, training_data, validation_data, device
     )
-    print(f"Train dataloader length: {len(train_dataloader)}")
     # save the initial model
     if not os.path.exists(model_paths["initial"]):
         # TODO check if the saving is indeed correct
@@ -467,7 +465,7 @@ def training_loop_gans(
     valid_logger.write_header(mode="valid")
     if testingDataDefined:
         test_logger.write_header(mode="test")
-    # TODO Do we have medcam?
+    # TODO Do we need that in GANs? I believe not
     # if "medcam" in params:
     #     model = medcam.inject(
     #         model,
@@ -542,8 +540,8 @@ def training_loop_gans(
             model, train_dataloader, optimizer_g, optimizer_d, params
         )
         (
-            epoch_valid_loss_gen,
-            epoch_valid_loss_disc,
+            epoch_valid_loss_disc_fake,
+            epoch_valid_loss_disc_real,
             epoch_valid_metric,
         ) = validate_network_gan(
             model,
@@ -565,14 +563,14 @@ def training_loop_gans(
         )
         valid_logger.write(
             epoch,
-            epoch_valid_loss_disc,
-            epoch_valid_loss_gen,
+            epoch_valid_loss_disc_fake,
+            epoch_valid_loss_disc_real,
             epoch_valid_metric,
         )
         if testingDataDefined:
             (
-                epoch_test_loss_gen,
-                epoch_test_loss_disc,
+                epoch_test_loss_disc_fake,
+                epoch_test_loss_disc_real,
                 epoch_test_metric,
             ) = validate_network_gan(
                 model,
@@ -585,8 +583,8 @@ def training_loop_gans(
             )
             test_logger.write(
                 epoch,
-                epoch_test_loss_disc,
-                epoch_test_loss_gen,
+                epoch_test_loss_disc_fake,
+                epoch_test_loss_disc_real,
                 epoch_test_metric,
             )
         if params["verbose"]:
@@ -607,8 +605,8 @@ def training_loop_gans(
                     "model_state_dict": model_dict,
                     "optimizer_gen_state_dict": optimizer_g.state_dict(),
                     "optimizer_disc_state_dict": optimizer_d.state_dict(),
-                    "loss_gen": epoch_valid_loss_gen,
-                    "loss_disc": epoch_valid_loss_disc,
+                    "loss_disc_fake": epoch_valid_loss_disc_fake,
+                    "loss_disc_real": epoch_valid_loss_disc_real,
                 },
                 model,
                 params,
@@ -631,8 +629,8 @@ def training_loop_gans(
                 "model_state_dict": model_dict,
                 "optimizer_gen_state_dict": optimizer_g.state_dict(),
                 "optimizer_disc_state_dict": optimizer_d.state_dict(),
-                "loss_gen": epoch_valid_loss_gen,
-                "loss_disc": epoch_valid_loss_disc,
+                "loss_disc_fake": epoch_valid_loss_disc_fake,
+                "loss_disc_real": epoch_valid_loss_disc_real,
             },
             model,
             params,
