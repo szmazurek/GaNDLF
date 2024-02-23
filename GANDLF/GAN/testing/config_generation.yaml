@@ -54,8 +54,8 @@ patience: 1
 # Set the batch size
 batch_size: 128
 # Set the initial learning rate
-learning_rate_g: 0.0001
-learning_rate_d: 0.0001
+learning_rate_g: 0.0002
+learning_rate_d: 0.0002
 # Set the learning rate scheduler i.e. the way the initial learning rate must be updated while the training progresses
 # Options: steplr, exponentiallr, cosineannealinglr, reducelronplateau, cycliclr
 random_seed_validation: 42
@@ -77,8 +77,8 @@ optimizer_g: {type: adam, betas : [0.5, 0.999]}
 # for single fold run, use '-' before the fold number
 nested_training:
   {
-    testing: -5, # this controls the holdout data splits for final model evaluation; use '1' if this is to be disabled
-    validation: -5 # this controls the validation data splits for model training
+    testing: -10, # this controls the holdout data splits for final model evaluation; use '1' if this is to be disabled
+    validation: -10 # this controls the validation data splits for model training
   }
 # various data augmentation techniques
 # options: affine, elastic, downsample, motion, ghosting, bias, blur, gaussianNoise, swap

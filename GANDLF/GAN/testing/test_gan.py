@@ -284,7 +284,7 @@ def test_train_inference_optimize_generation_rad_2d(device):
     parameters["metrics"] = ["ssim", "lpips"]
     parameters["model"]["architecture"] = "dcgan"
     parameters["model"]["onnx_export"] = True
-    parameters["model"]["print_summary"] = False
+    parameters["model"]["print_summary"] = True
     parameters = populate_header_in_parameters(
         parameters, parameters["headers"]
     )
