@@ -1,5 +1,6 @@
 import os
 import pathlib
+from PIL import Image
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,29 @@ from tqdm import tqdm
 from typing import Union, Tuple, Optional
 from GANDLF.models.modelBase import ModelBase
 from .generic import get_fixed_latent_vector, generate_latent_vector
+from warnings import warn
+import torchvision.utils as vutils
+
+
+def norm_ip(img: torch.Tensor, low: float, high: float):
+    """Utility function to normalize the input image, the same as in
+    torchvision. Operation is performed in place.
+    Args:
+        img (torch.Tensor): The image to normalize.
+        low (float): The lower bound of the normalization.
+        high (float): The upper bound of the normalization.
+    """
+    img.clamp_(min=low, max=high)
+    img.sub_(low).div_(max(high - low, 1e-5))
+
+
+def norm_range(t: torch.Tensor):
+    """Normalizes the input tensor to be in the range [0, 1]. Operation is
+    performed in place.
+    Args:
+        t (torch.Tensor): The input tensor to normalize.
+    """
+    norm_ip(t, float(t.min()), float(t.max()))
 
 
 def validate_network_gan(
@@ -235,13 +259,10 @@ def validate_network_gan(
     # output_prediction = output_prediction.unsqueeze(0)
 
     if params["save_output"]:
-        print("Subject data shape" + str(subject["1"]["data"].shape))
-        print("Subject affine shape" + str(subject["1"]["affine"].shape))
         img_for_metadata = torchio.ScalarImage(
             tensor=subject["1"]["data"].squeeze(-1),
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
-        # if jpg detected, convert to 8-bit arrays
         ext = get_filename_extension_sanitized(subject["1"]["path"][0])
         ### TODO do not use this, temporary only for debugging
         ext = ".png"
@@ -258,31 +279,35 @@ def validate_network_gan(
             device=params["device"],
             seed=params.get("seed", 0),
         )
-        # the generation takes place in batches, as there exists possi
 
         with torch.no_grad():
             fake_images_to_save = model.generator(fixed_latent_vector).cpu()
-        for i, fake_image_to_save in enumerate(fake_images_to_save):
-            fake_image_to_save = (
-                ((fake_image_to_save + 1) * (255 / 2)).unsqueeze(0).numpy()
+        if ext in [
+            ".jpg",
+            ".jpeg",
+            ".png",
+        ]:
+            fake_images_tensor = fake_images_to_save.clone()
+            norm_range(fake_images_to_save)
+            fake_images_to_save *= 255
+            fake_images_to_save = (
+                fake_images_to_save.permute(0, 2, 3, 1)
+                .numpy()
+                .astype(np.uint8)
             )
-            # fake_image_to_save = (fake_image_to_save + 1) / 2
-
-            if ext in [
-                ".jpg",
-                ".jpeg",
-                ".png",
-            ]:
-                fake_image_to_save = fake_image_to_save.astype(np.uint8)
-
-            if image.shape[-1] > 1:
-                result_image = sitk.GetImageFromArray(fake_image_to_save)
-
-            else:
+        is_2d_rgb = (
+            params["model"]["dimension"] == 2
+            and fake_images_to_save.shape[-1] == 3
+        )
+        for i, fake_image_to_save in enumerate(fake_images_to_save):
+            if is_2d_rgb:
                 result_image = sitk.GetImageFromArray(
-                    fake_image_to_save.squeeze()
+                    fake_image_to_save, isVector=True
                 )
-
+            else:
+                result_image = sitk.GetImageFromArray(fake_image_to_save)
+            # TODO - think about proper metadata handling, for now
+            # it gives an error
             # result_image.CopyInformation(img_for_metadata)
 
             # this handles cases that need resampling/resizing
@@ -313,70 +338,41 @@ def validate_network_gan(
                 subject["subject_id"][0],
                 subject["subject_id"][0] + f"_gen_{i}" + ext,
             )
-            import torchvision.utils as vutils
 
-            # vutils.save_image(fake_image_to_save, path_to_save)
             sitk.WriteImage(
                 result_image,
                 path_to_save,
             )
+        # for convenience, user can save the grid of images as well
+        if params["save_grid"] and params["model"]["dimension"] == 2:
+            os.makedirs(
+                os.path.join(current_output_dir, "testing"),
+                exist_ok=True,
+            )
+            os.makedirs(
+                os.path.join(
+                    current_output_dir,
+                    "testing",
+                    subject["subject_id"][0],
+                ),
+                exist_ok=True,
+            )
 
-        ## special case for 2D
-        # for i, fake_image_to_save in enumerate(fake_images_to_save[:16]):
-        #     fake_image_to_save = ((fake_image_to_save + 1) * (255 / 2)).astype(
-        #         np.uint8
-        #     )
-        #     # if ext in [
-        #     #     ".jpg",
-        #     #     ".jpeg",
-        #     #     ".png",
-        #     # ]:
-        #     #     fake_image_to_save = fake_image_to_save.astype(np.uint8)
-        #     print(fake_image_to_save.shape)
-        #     print(np.min(fake_image_to_save), np.max(fake_image_to_save))
-        #     if image.shape[-1] > 1:
-        #         result_image = sitk.GetImageFromArray(fake_image_to_save)
-        #     else:
-        #         result_image = sitk.GetImageFromArray(
-        #             fake_image_to_save.squeeze()
-        #         )
-        #     # result_image.CopyInformation(img_for_metadata)
-
-        #     # this handles cases that need resampling/resizing
-        #     if "resample" in params["data_preprocessing"]:
-        #         result_image = resample_image(
-        #             result_image,
-        #             img_for_metadata.GetSpacing(),
-        #             interpolator=sitk.sitkNearestNeighbor,
-        #         )
-        # Create the subject directory if it doesn't exist in the
-        # current_output_dir directory
-        os.makedirs(
-            os.path.join(current_output_dir, "testing"),
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(
+            path_to_save = os.path.join(
                 current_output_dir,
                 "testing",
                 subject["subject_id"][0],
-            ),
-            exist_ok=True,
-        )
+                subject["subject_id"][0] + f"array" + ext,
+            )
 
-        path_to_save = os.path.join(
-            current_output_dir,
-            "testing",
-            subject["subject_id"][0],
-            subject["subject_id"][0] + f"array" + ext,
-        )
-        # sitk.WriteImage(
-        #     result_image,
-        #     path_to_save,
-        # )
-        import torchvision.utils as vutils
-
-        vutils.save_image(fake_images_to_save, path_to_save, normalize=True)
+            vutils.save_image(
+                fake_images_tensor,
+                path_to_save,
+                normalize=True,
+                scale_each=False,
+            )
+        elif params["save_grid"] and params["model"]["dimension"] == 3:
+            warn("Cannot save grid for 3D images, this step will be omitted.")
     if scheduler_d is not None:
         if params["scheduler_d"]["type"] in [
             "reduce_on_plateau",
