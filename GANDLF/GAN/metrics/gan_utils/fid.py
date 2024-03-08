@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import torch
 from torch import Tensor
 from torch.nn import Module
-from torch.nn.functional import adaptive_avg_pool2d, interpolate
+from torch.nn.functional import adaptive_avg_pool2d
 from acsconv.converters import (
     ACSConverter,
     Conv3dConverter,

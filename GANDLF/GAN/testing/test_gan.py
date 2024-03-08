@@ -236,6 +236,7 @@ def test_train_generation_rad_3d(device):
     parameters["model"]["dimension"] = 3
     parameters["model"]["class_list"] = [0, 1]
     parameters["model"]["final_layer"] = "softmax"
+    parameters["inference_config"]["save_format"] = "nii.gz"
     parameters["model"]["amp"] = True
     parameters["in_memory"] = True
     if "fid" in parameters["metrics"]:

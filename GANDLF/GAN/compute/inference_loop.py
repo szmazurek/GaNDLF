@@ -4,31 +4,47 @@ number of images to generate. In the future, there can be an option to pass
 the test data to compute metrics (also can be useful in conditional generation
 or for explainability)."""
 
-from .forward_pass import validate_network_gan
 from .generic import create_pytorch_objects_gan, generate_latent_vector
-import os, sys
-from pathlib import Path
+import os
+import SimpleITK as sitk
 
 # hides torchio citation request, see https://github.com/fepegar/torchio/issues/235
 os.environ["TORCHIO_HIDE_CITATION_PROMPT"] = "1"
 
 import torch
-import cv2
 from random import seed as random_seed
 from pandas import DataFrame
 import numpy as np
-from skimage.io import imsave
 from tqdm import tqdm
 from torch.cuda.amp import autocast
-import tiffslide as openslide
 from GANDLF.utils import (
     best_model_path_end,
     latest_model_path_end,
-    print_model_summary,
 )
-from PIL import Image
 from typing import Union
 from warnings import warn
+
+
+## TODO move this function into some utils file
+def norm_range(t: torch.Tensor):
+    """Normalizes the input tensor to be in the range [0, 1]. Operation is
+    performed in place.
+    Args:
+        t (torch.Tensor): The input tensor to normalize.
+    """
+
+    def norm_ip(img: torch.Tensor, low: float, high: float):
+        """Utility function to normalize the input image, the same as in
+        torchvision. Operation is performed in place.
+        Args:
+            img (torch.Tensor): The image to normalize.
+            low (float): The lower bound of the normalization.
+            high (float): The upper bound of the normalization.
+        """
+        img.clamp_(min=low, max=high)
+        img.sub_(low).div_(max(high - low, 1e-5))
+
+    norm_ip(t, float(t.min()), float(t.max()))
 
 
 def inference_loop_gans(
@@ -63,7 +79,21 @@ def inference_loop_gans(
     assert (
         parameters["model"]["type"].lower() == "torch"
     ), f"The model type is not recognized: {parameters['model']['type']}"
-
+    assert (
+        "save_format" in parameters["inference_config"]
+    ), "The save format is not provided"
+    assert (
+        "n_generated_samples" in parameters["inference_config"]
+    ), "The number of samples to generate is not provided"
+    assert (
+        "batch_size" in parameters["inference_config"]
+    ), "The batch size for inference is not provided"
+    assert parameters["inference_config"]["save_format"] in [
+        "png",
+        "jpeg",
+        "jpg",
+        "nii.gz",
+    ], f"The save format is not recognized: {parameters['inference_config']['save_format']}"
     if dataframe is not None:
         warn(
             "The dataframe was passed, but it's usage is not yet implemented in inference. Ignoring it."
@@ -74,6 +104,7 @@ def inference_loop_gans(
     pytorch_objects = create_pytorch_objects_gan(parameters, device=device)
     model, parameters = pytorch_objects[0], pytorch_objects[-1]
     main_dict = None
+
     if parameters["model"]["type"].lower() == "torch":
         # Loading the weights into the model
         if os.path.isdir(modelDir):
@@ -131,6 +162,7 @@ def inference_loop_gans(
         torch.manual_seed(parameters["seed"])
         np.random.seed(parameters["seed"])
         random_seed(parameters["seed"])
+    file_extension = parameters["inference_config"]["save_format"]
     for iteration in tqdm(range(n_iterations)):
         with torch.no_grad():
             latent_vector = generate_latent_vector(
@@ -144,19 +176,31 @@ def inference_loop_gans(
                     generated_images = model(latent_vector)
             else:
                 generated_images = model(latent_vector)
-            generated_images = generated_images.cpu().to(torch.uint8)
+            generated_images = generated_images.cpu()
+            norm_range(generated_images)
+            generated_images = generated_images * 255
+            if parameters["model"]["dimension"] == 2:
+                generated_images = generated_images.permute(0, 2, 3, 1)
+                generated_images = generated_images.numpy().astype(np.uint8)
+            elif parameters["model"]["dimension"] == 3:
+                generated_images = generated_images.permute(0, 2, 3, 4, 1)
             for i in range(generated_images.shape[0]):
+                image_to_save = generated_images[i]
+                save_path = os.path.join(
+                    outputDir,
+                    f"batch_num_{iteration}_image_{i}.{file_extension}",
+                )
+
                 if parameters["model"]["dimension"] == 2:
-                    image_to_save = (
-                        generated_images[i].permute(1, 2, 0).numpy()
-                    )
-                    imsave(
-                        os.path.join(
-                            outputDir, f"batch_num_{iteration}_image_{i}.png"
+                    sitk.WriteImage(
+                        sitk.GetImageFromArray(
+                            image_to_save,
+                            isVector=True,
                         ),
-                        image_to_save,
+                        save_path,
                     )
                 elif parameters["model"]["dimension"] == 3:
-                    raise NotImplementedError(
-                        "3D generation saving is not yet implemented"
+                    sitk.WriteImage(
+                        sitk.GetImageFromArray(image_to_save),
+                        save_path,
                     )

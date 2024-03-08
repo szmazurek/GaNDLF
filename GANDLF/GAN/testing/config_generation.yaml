@@ -139,9 +139,9 @@ q_samples_per_volume: 1
 q_num_workers: 0
 
 inference_config: {
-  n_generated_samples : 64, # number of samples to generate
+  n_generated_samples : 12, # number of samples to generate
   batch_size: 6, # batch size for inference
-  save_format : "nii"
+  save_format : "png"
   }
 validation_config: {
   n_generated_samples : 12, # number of samples to generate

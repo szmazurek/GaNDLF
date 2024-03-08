@@ -1,6 +1,5 @@
 from typing import Any, ClassVar, List, Optional, Sequence, Union
 from typing_extensions import Literal
-
 import torch
 from torch import Tensor
 from torchmetrics.utilities.plot import _AX_TYPE, _PLOT_OUT_TYPE

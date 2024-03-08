@@ -1,7 +1,7 @@
 import torch
 import torchmetrics as tm
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union, Literal
+from typing import Any, Dict, Tuple
 from .gan_utils.lpip import LPIPSGandlf
 from .gan_utils.fid import FrechetInceptionDistance
 
@@ -204,9 +204,13 @@ def _calculator_LPIPS(
             images = (images - images.min()) / (images.max() - images.min())
         return images
 
-    n_input_channels, n_dim, net_type, reduction, converter_type = (
-        _get_metric_params(params)
-    )
+    (
+        n_input_channels,
+        n_dim,
+        net_type,
+        reduction,
+        converter_type,
+    ) = _get_metric_params(params)
     if n_dim == 2:
         real_images = real_images.squeeze(-1)
     else:

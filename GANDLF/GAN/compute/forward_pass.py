@@ -1,43 +1,21 @@
 import os
 import pathlib
-from PIL import Image
-
 import numpy as np
-import pandas as pd
 import SimpleITK as sitk
 import torch
 import torchio
-from GANDLF.GAN.compute.loss_and_metric import get_loss_and_metrics_gans
 from GANDLF.GAN.compute.step import step_gan
-from GANDLF.data.post_process import global_postprocessing_dict
 from GANDLF.utils import (
     get_date_time,
     get_filename_extension_sanitized,
-    get_unique_timestamp,
     resample_image,
-    reverse_one_hot,
-    get_ground_truths_and_predictions_tensor,
-    print_and_format_metrics,
 )
-from GANDLF.metrics import overall_stats
 from tqdm import tqdm
-from typing import Union, Tuple, Optional
+from typing import Tuple
 from GANDLF.models.modelBase import ModelBase
 from .generic import get_fixed_latent_vector, generate_latent_vector
 from warnings import warn
 import torchvision.utils as vutils
-
-
-def norm_ip(img: torch.Tensor, low: float, high: float):
-    """Utility function to normalize the input image, the same as in
-    torchvision. Operation is performed in place.
-    Args:
-        img (torch.Tensor): The image to normalize.
-        low (float): The lower bound of the normalization.
-        high (float): The upper bound of the normalization.
-    """
-    img.clamp_(min=low, max=high)
-    img.sub_(low).div_(max(high - low, 1e-5))
 
 
 def norm_range(t: torch.Tensor):
@@ -46,6 +24,18 @@ def norm_range(t: torch.Tensor):
     Args:
         t (torch.Tensor): The input tensor to normalize.
     """
+
+    def norm_ip(img: torch.Tensor, low: float, high: float):
+        """Utility function to normalize the input image, the same as in
+        torchvision. Operation is performed in place.
+        Args:
+            img (torch.Tensor): The image to normalize.
+            low (float): The lower bound of the normalization.
+            high (float): The upper bound of the normalization.
+        """
+        img.clamp_(min=low, max=high)
+        img.sub_(low).div_(max(high - low, 1e-5))
+
     norm_ip(t, float(t.min()), float(t.max()))
 
 
@@ -92,7 +82,6 @@ def validate_network_gan(
     total_epoch_metrics = {}
     for metric in params["metrics"]:
         total_epoch_metrics[metric] = 0.0
-    subject_id_list = []
     is_inference = mode == "inference"
     if params["verbose"]:
         if params["model"]["amp"]:
@@ -267,8 +256,6 @@ def validate_network_gan(
         ## TODO dirty bypass - for some reason, the extension is empty
         if ext == "":
             ext = ".png"
-        print(f"Extension: {subject['1']['path']}")
-        print(f"Extension: {ext}")
 
         fixed_latent_vector = get_fixed_latent_vector(
             batch_size=params["validation_config"]["n_generated_samples"],
