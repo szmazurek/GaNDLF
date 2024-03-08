@@ -24,7 +24,7 @@ all_norm_types = ["batch", "instance"]
 
 all_model_type = ["torch", "openvino"]
 
-patch_size = {"2D": [128, 128, 1], "3D": [32, 32, 32]}
+patch_size = {"2D": [128, 128, 1], "3D": [48, 48, 48]}
 
 testingDir = Path(__file__).parent.absolute().__str__()
 baseConfigDir = os.path.join(testingDir, os.pardir, "samples")
@@ -83,10 +83,15 @@ def test_generic_constructTrainingCSV():
         elif "2d_rad_generation" in application_data:
             channelsID = "png"
             labelID = None
+        elif "3d_rad_generation" in application_data:
+            channelsID = "nii.gz"
+            labelID = None
+        elif "2d_histo_generation" in application_data:
+            channelsID = "image"
+            labelID = "mask"
         elif "dataset_1000" in application_data:
             channelsID = "jpg"
             labelID = None
-
         # else:
         #     continue
         outputFile = inputDir + "/train_" + application_data + ".csv"
@@ -182,7 +187,7 @@ def write_temp_config_path(parameters_to_write):
 #         testingDir + "/config_generation.yaml", version_check_flag=False
 #     )
 #     training_data, parameters["headers"] = parseTrainingCSV(
-#         inputDir + "/train_dataset_1000.csv"
+#         inputDir + "/train_2d_rad_generation.csv"
 #     )
 #     parameters["modality"] = "rad"
 #     parameters["patch_size"] = patch_size["2D"]
@@ -216,102 +221,102 @@ def write_temp_config_path(parameters_to_write):
 #     print("passed")
 
 
-# def test_train_generation_rad_3d(device):
-#     print("05: Starting 3D Rad segmentation tests")
-#     # read and parse csv
-#     # read and initialize parameters for specific data dimension
-#     parameters = parseConfigGAN(
-#         testingDir + "/config_generation.yaml", version_check_flag=False
-#     )
-#     training_data, parameters["headers"] = parseTrainingCSV(
-#         inputDir + "/train_3d_rad_generation.csv"
-#     )
-#     parameters["modality"] = "rad"
-#     parameters["patch_size"] = patch_size["3D"]
-#     parameters["model"]["dimension"] = 3
-#     parameters["model"]["class_list"] = [0, 1]
-#     parameters["model"]["final_layer"] = "softmax"
-#     parameters["model"]["amp"] = True
-#     parameters["in_memory"] = True
-#     if "fid" in parameters["metrics"]:
-#         parameters["metrics"].pop("fid")
-#         # fid is not supported for 3D data
-#     parameters["model"]["num_channels"] = len(
-#         parameters["headers"]["channelHeaders"]
-#     )
-#     parameters["save_output"] = True
-#     parameters["model"]["onnx_export"] = False
-#     parameters["model"]["print_summary"] = False
-#     parameters = populate_header_in_parameters(
-#         parameters, parameters["headers"]
-#     )
-#     # loop through selected models and train for single epoch
-#     for model in all_models_generation:
-#         parameters["model"]["architecture"] = model
-#         parameters["nested_training"]["testing"] = -5
-#         parameters["nested_training"]["validation"] = -5
-#         sanitize_outputDir()
-#         TrainingManagerGAN(
-#             dataframe=training_data,
-#             outputDir=outputDir,
-#             parameters=parameters,
-#             device=device,
-#             resume=False,
-#             reset=True,
-#         )
-
-#     sanitize_outputDir()
-
-#     print("passed")
-
-
-def test_train_inference_optimize_generation_rad_2d(device):
-    print("14: Starting 2D Rad segmentation tests for optimization")
+def test_train_generation_rad_3d(device):
+    print("05: Starting 3D Rad segmentation tests")
     # read and parse csv
+    # read and initialize parameters for specific data dimension
     parameters = parseConfigGAN(
         testingDir + "/config_generation.yaml", version_check_flag=False
     )
     training_data, parameters["headers"] = parseTrainingCSV(
-        inputDir + "/train_dataset_1000.csv"
+        inputDir + "/train_3d_rad_generation.csv"
     )
-    # parameters["patch_size"] = patch_size["2D"]
     parameters["modality"] = "rad"
-    parameters["model"]["dimension"] = 2
-    parameters["model"]["class_list"] = [0, 255]
+    parameters["patch_size"] = patch_size["3D"]
+    parameters["model"]["dimension"] = 3
+    parameters["model"]["class_list"] = [0, 1]
+    parameters["model"]["final_layer"] = "softmax"
     parameters["model"]["amp"] = True
+    parameters["in_memory"] = True
+    if "fid" in parameters["metrics"]:
+        parameters["metrics"].pop("fid")
+        # fid is not supported for 3D data
+    parameters["model"]["num_channels"] = len(
+        parameters["headers"]["channelHeaders"]
+    )
     parameters["save_output"] = True
-    parameters["model"]["num_channels"] = 3
-    parameters["metrics"] = ["ssim", "lpips"]
-    parameters["model"]["architecture"] = "dcgan"
-    parameters["model"]["onnx_export"] = True
-    parameters["model"]["print_summary"] = True
+    parameters["model"]["onnx_export"] = False
+    parameters["model"]["print_summary"] = False
     parameters = populate_header_in_parameters(
         parameters, parameters["headers"]
     )
-    sanitize_outputDir()
-    TrainingManagerGAN(
-        dataframe=training_data,
-        outputDir=outputDir,
-        parameters=parameters,
-        device=device,
-        resume=False,
-        reset=True,
-    )
-
-    ## testing inference
-    # for model_type in all_model_type:
-    parameters["model"]["type"] = "torch"
-    parameters["output_dir"] = outputDir  # this is in inference mode
-    InferenceManagerGAN(
-        dataframe=training_data,
-        modelDir=outputDir,
-        parameters=parameters,
-        device=device,
-    )
+    # loop through selected models and train for single epoch
+    for model in all_models_generation:
+        parameters["model"]["architecture"] = model
+        parameters["nested_training"]["testing"] = -5
+        parameters["nested_training"]["validation"] = -5
+        sanitize_outputDir()
+        TrainingManagerGAN(
+            dataframe=training_data,
+            outputDir=outputDir,
+            parameters=parameters,
+            device=device,
+            resume=False,
+            reset=True,
+        )
 
     # sanitize_outputDir()
 
     print("passed")
+
+
+# def test_train_inference_optimize_generation_rad_2d(device):
+#     print("14: Starting 2D Rad segmentation tests for optimization")
+#     # read and parse csv
+#     parameters = parseConfigGAN(
+#         testingDir + "/config_generation.yaml", version_check_flag=False
+#     )
+#     training_data, parameters["headers"] = parseTrainingCSV(
+#         inputDir + "/train_2d_rad_generation.csv"
+#     )
+#     # parameters["patch_size"] = patch_size["2D"]
+#     parameters["modality"] = "rad"
+#     parameters["model"]["dimension"] = 2
+#     parameters["model"]["class_list"] = [0, 255]
+#     parameters["model"]["amp"] = True
+#     parameters["save_output"] = True
+#     parameters["model"]["num_channels"] = 3
+#     parameters["metrics"] = ["ssim", "lpips"]
+#     parameters["model"]["architecture"] = "dcgan"
+#     parameters["model"]["onnx_export"] = True
+#     parameters["model"]["print_summary"] = True
+#     parameters = populate_header_in_parameters(
+#         parameters, parameters["headers"]
+#     )
+#     sanitize_outputDir()
+#     TrainingManagerGAN(
+#         dataframe=training_data,
+#         outputDir=outputDir,
+#         parameters=parameters,
+#         device=device,
+#         resume=False,
+#         reset=True,
+#     )
+
+#     ## testing inference
+#     # for model_type in all_model_type:
+#     parameters["model"]["type"] = "torch"
+#     parameters["output_dir"] = outputDir  # this is in inference mode
+#     InferenceManagerGAN(
+#         dataframe=training_data,
+#         modelDir=outputDir,
+#         parameters=parameters,
+#         device=device,
+#     )
+
+#     sanitize_outputDir()
+
+#     print("passed")
 
 
 # def test_train_inference_generation_histology_2d(device):

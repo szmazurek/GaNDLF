@@ -74,8 +74,8 @@ optimizer_g: {type: adam, betas : [0.5, 0.999]}
 # for single fold run, use '-' before the fold number
 nested_training:
   {
-    testing: -10, # this controls the holdout data splits for final model evaluation; use '1' if this is to be disabled
-    validation: -10 # this controls the validation data splits for model training
+    testing: -5, # this controls the holdout data splits for final model evaluation; use '1' if this is to be disabled
+    validation: -5 # this controls the validation data splits for model training
   }
 # various data augmentation techniques
 # options: affine, elastic, downsample, motion, ghosting, bias, blur, gaussianNoise, swap
@@ -112,11 +112,11 @@ data_preprocessing:
     #   'min': 10, 
     #   'max': 75
     # }, 
-    'normalize_standardize',
+    # 'normalize_standardize',
     # 'resample':{
     #   'resolution': [1,2,3]
     # },
-    'resize': [64,64], # this is generally not recommended, as it changes image properties in unexpected ways
+    # 'resize': [64,64], # this is generally not recommended, as it changes image properties in unexpected ways
   }
 # data postprocessing node
 data_postprocessing:

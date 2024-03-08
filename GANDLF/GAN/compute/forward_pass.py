@@ -260,18 +260,11 @@ def validate_network_gan(
 
     if params["save_output"]:
         img_for_metadata = torchio.ScalarImage(
-            tensor=subject["1"]["data"].squeeze(-1),
+            tensor=subject["1"]["data"].squeeze(-1, 1),
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
         ext = get_filename_extension_sanitized(subject["1"]["path"][0])
-        ### TODO do not use this, temporary only for debugging
-        ext = ".png"
-        # if ext in [
-        #     ".jpg",
-        #     ".jpeg",
-        #     ".png",
-        # ]:
-        # fake_images_batch = fake_images_batch.astype(np.uint8)
+
         fixed_latent_vector = get_fixed_latent_vector(
             batch_size=params["validation_config"]["n_generated_samples"],
             latent_vector_size=params["model"]["latent_vector_size"],
@@ -287,7 +280,9 @@ def validate_network_gan(
             ".jpeg",
             ".png",
         ]:
+            # for optional later save as grid
             fake_images_tensor = fake_images_to_save.clone()
+            # Rescale the images 0 - 1. Think if this is the best way to do it
             norm_range(fake_images_to_save)
             fake_images_to_save *= 255
             fake_images_to_save = (
@@ -319,9 +314,12 @@ def validate_network_gan(
                 )
 
             # Create the subject directory if it doesn't exist in the
-            os.makedirs(
-                os.path.join(current_output_dir, "testing"),
-                exist_ok=True,
+            print(
+                os.path.join(
+                    current_output_dir,
+                    "testing",
+                    subject["subject_id"][0],
+                )
             )
             os.makedirs(
                 os.path.join(

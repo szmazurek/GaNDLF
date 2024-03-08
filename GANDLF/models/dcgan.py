@@ -247,8 +247,8 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(
                 disc_init_channels,
                 disc_init_channels * growth_rate,
-                4,
-                2,
+                3,
+                1,
                 1,
                 bias=False,
             ),
@@ -264,8 +264,8 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(
                 disc_init_channels * growth_rate,
                 disc_init_channels * (growth_rate**2),
-                4,
-                2,
+                3,
+                1,
                 1,
                 bias=False,
             ),
@@ -281,7 +281,7 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(
                 disc_init_channels * (growth_rate**2),
                 disc_init_channels * (growth_rate**3),
-                4,
+                3,
                 2,
                 1,
                 bias=False,
@@ -299,7 +299,7 @@ class _DiscriminatorDCGAN(nn.Module):
             conv(
                 disc_init_channels * (growth_rate**3),
                 1,
-                4,
+                3,
                 1,
                 0,
                 bias=False,
