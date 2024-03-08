@@ -74,7 +74,9 @@ def patch_extraction(input_path, output_path, config=None):
         manager.set_image_header("Channel_0")
         manager.set_mask_header("Label")
 
-        cfg["patch_size"] = get_patch_size_in_microns(slide, original_patch_size)
+        cfg["patch_size"] = get_patch_size_in_microns(
+            slide, original_patch_size
+        )
 
         # Generate an initial validity mask
         mask, scale = generate_initial_mask(slide, cfg["scale"])

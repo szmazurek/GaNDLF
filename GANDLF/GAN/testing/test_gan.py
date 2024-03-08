@@ -180,45 +180,45 @@ def write_temp_config_path(parameters_to_write):
 # # these are helper functions to be used in other tests
 
 
-# def test_train_generation_rad_2d(device):
-#     print("03: Starting 2D Rad segmentation tests")
-#     # read and parse csv
-#     parameters = parseConfigGAN(
-#         testingDir + "/config_generation.yaml", version_check_flag=False
-#     )
-#     training_data, parameters["headers"] = parseTrainingCSV(
-#         inputDir + "/train_2d_rad_generation.csv"
-#     )
-#     parameters["modality"] = "rad"
-#     parameters["patch_size"] = patch_size["2D"]
-#     parameters["model"]["dimension"] = 2
-#     parameters["model"]["class_list"] = [0, 255]
-#     parameters["model"]["amp"] = True
-#     parameters["model"]["num_channels"] = 3
-#     parameters["model"]["onnx_export"] = False
-#     parameters["model"]["print_summary"] = False
-#     parameters["data_preprocessing"]["resize_image"] = [224, 224]
-#     parameters = populate_header_in_parameters(
-#         parameters, parameters["headers"]
-#     )
-#     # read and initialize parameters for specific data dimension
-#     for model in all_models_generation:
-#         parameters["model"]["architecture"] = model
-#         parameters["nested_training"]["testing"] = -5
-#         parameters["nested_training"]["validation"] = -5
-#         sanitize_outputDir()
-#         TrainingManagerGAN(
-#             dataframe=training_data,
-#             outputDir=outputDir,
-#             parameters=parameters,
-#             device=device,
-#             resume=False,
-#             reset=True,
-#         )
+def test_train_generation_rad_2d(device):
+    print("03: Starting 2D Rad segmentation tests")
+    # read and parse csv
+    parameters = parseConfigGAN(
+        testingDir + "/config_generation.yaml", version_check_flag=False
+    )
+    training_data, parameters["headers"] = parseTrainingCSV(
+        inputDir + "/train_2d_rad_generation.csv"
+    )
+    parameters["modality"] = "rad"
+    parameters["patch_size"] = patch_size["2D"]
+    parameters["model"]["dimension"] = 2
+    parameters["model"]["class_list"] = [0, 255]
+    parameters["model"]["amp"] = True
+    parameters["model"]["num_channels"] = 3
+    parameters["model"]["onnx_export"] = False
+    parameters["model"]["print_summary"] = False
+    parameters["data_preprocessing"]["resize_image"] = [224, 224]
+    parameters = populate_header_in_parameters(
+        parameters, parameters["headers"]
+    )
+    # read and initialize parameters for specific data dimension
+    for model in all_models_generation:
+        parameters["model"]["architecture"] = model
+        parameters["nested_training"]["testing"] = -5
+        parameters["nested_training"]["validation"] = -5
+        sanitize_outputDir()
+        TrainingManagerGAN(
+            dataframe=training_data,
+            outputDir=outputDir,
+            parameters=parameters,
+            device=device,
+            resume=False,
+            reset=True,
+        )
 
-#     sanitize_outputDir()
+    sanitize_outputDir()
 
-#     print("passed")
+    print("passed")
 
 
 def test_train_generation_rad_3d(device):
@@ -265,133 +265,133 @@ def test_train_generation_rad_3d(device):
             reset=True,
         )
 
-    # sanitize_outputDir()
+    sanitize_outputDir()
 
     print("passed")
 
 
-# def test_train_inference_optimize_generation_rad_2d(device):
-#     print("14: Starting 2D Rad segmentation tests for optimization")
-#     # read and parse csv
-#     parameters = parseConfigGAN(
-#         testingDir + "/config_generation.yaml", version_check_flag=False
-#     )
-#     training_data, parameters["headers"] = parseTrainingCSV(
-#         inputDir + "/train_2d_rad_generation.csv"
-#     )
-#     # parameters["patch_size"] = patch_size["2D"]
-#     parameters["modality"] = "rad"
-#     parameters["model"]["dimension"] = 2
-#     parameters["model"]["class_list"] = [0, 255]
-#     parameters["model"]["amp"] = True
-#     parameters["save_output"] = True
-#     parameters["model"]["num_channels"] = 3
-#     parameters["metrics"] = ["ssim", "lpips"]
-#     parameters["model"]["architecture"] = "dcgan"
-#     parameters["model"]["onnx_export"] = True
-#     parameters["model"]["print_summary"] = True
-#     parameters = populate_header_in_parameters(
-#         parameters, parameters["headers"]
-#     )
-#     sanitize_outputDir()
-#     TrainingManagerGAN(
-#         dataframe=training_data,
-#         outputDir=outputDir,
-#         parameters=parameters,
-#         device=device,
-#         resume=False,
-#         reset=True,
-#     )
+def test_train_inference_optimize_generation_rad_2d(device):
+    print("14: Starting 2D Rad segmentation tests for optimization")
+    # read and parse csv
+    parameters = parseConfigGAN(
+        testingDir + "/config_generation.yaml", version_check_flag=False
+    )
+    training_data, parameters["headers"] = parseTrainingCSV(
+        inputDir + "/train_2d_rad_generation.csv"
+    )
+    parameters["patch_size"] = patch_size["2D"]
+    parameters["modality"] = "rad"
+    parameters["model"]["dimension"] = 2
+    parameters["model"]["class_list"] = [0, 255]
+    parameters["model"]["amp"] = True
+    parameters["save_output"] = True
+    parameters["model"]["num_channels"] = 3
+    parameters["metrics"] = ["ssim", "lpips"]
+    parameters["model"]["architecture"] = "dcgan"
+    parameters["model"]["onnx_export"] = True
+    parameters["model"]["print_summary"] = True
+    parameters = populate_header_in_parameters(
+        parameters, parameters["headers"]
+    )
+    sanitize_outputDir()
+    TrainingManagerGAN(
+        dataframe=training_data,
+        outputDir=outputDir,
+        parameters=parameters,
+        device=device,
+        resume=False,
+        reset=True,
+    )
 
-#     ## testing inference
-#     # for model_type in all_model_type:
-#     parameters["model"]["type"] = "torch"
-#     parameters["output_dir"] = outputDir  # this is in inference mode
-#     InferenceManagerGAN(
-#         dataframe=training_data,
-#         modelDir=outputDir,
-#         parameters=parameters,
-#         device=device,
-#     )
+    ## testing inference
+    # for model_type in all_model_type:
+    parameters["model"]["type"] = "torch"
+    parameters["output_dir"] = outputDir  # this is in inference mode
+    InferenceManagerGAN(
+        dataframe=training_data,
+        modelDir=outputDir,
+        parameters=parameters,
+        device=device,
+    )
 
-#     sanitize_outputDir()
+    sanitize_outputDir()
 
-#     print("passed")
+    print("passed")
 
 
-# def test_train_inference_generation_histology_2d(device):
-#     print("34: Starting histology train/inference segmentation tests")
-#     # overwrite previous results
-#     sanitize_outputDir()
-#     output_dir_patches = os.path.join(outputDir, "histo_patches")
-#     if os.path.isdir(output_dir_patches):
-#         shutil.rmtree(output_dir_patches)
-#     Path(output_dir_patches).mkdir(parents=True, exist_ok=True)
-#     output_dir_patches_output = os.path.join(
-#         output_dir_patches, "histo_patches_output"
-#     )
-#     Path(output_dir_patches_output).mkdir(parents=True, exist_ok=True)
+def test_train_inference_generation_histology_2d(device):
+    print("34: Starting histology train/inference segmentation tests")
+    # overwrite previous results
+    sanitize_outputDir()
+    output_dir_patches = os.path.join(outputDir, "histo_patches")
+    if os.path.isdir(output_dir_patches):
+        shutil.rmtree(output_dir_patches)
+    Path(output_dir_patches).mkdir(parents=True, exist_ok=True)
+    output_dir_patches_output = os.path.join(
+        output_dir_patches, "histo_patches_output"
+    )
+    Path(output_dir_patches_output).mkdir(parents=True, exist_ok=True)
 
-#     parameters_patch = {}
-#     # extracting minimal number of patches to ensure that the test does not take too long
-#     parameters_patch["num_patches"] = 10
-#     parameters_patch["read_type"] = "sequential"
-#     # define patches to be extracted in terms of microns
-#     parameters_patch["patch_size"] = ["1000m", "1000m"]
+    parameters_patch = {}
+    # extracting minimal number of patches to ensure that the test does not take too long
+    parameters_patch["num_patches"] = 10
+    parameters_patch["read_type"] = "sequential"
+    # define patches to be extracted in terms of microns
+    parameters_patch["patch_size"] = ["1000m", "1000m"]
 
-#     file_config_temp = write_temp_config_path(parameters_patch)
+    file_config_temp = write_temp_config_path(parameters_patch)
 
-#     patch_extraction(
-#         inputDir + "/train_2d_histo_generation.csv",
-#         output_dir_patches_output,
-#         file_config_temp,
-#     )
+    patch_extraction(
+        inputDir + "/train_2d_histo_generation.csv",
+        output_dir_patches_output,
+        file_config_temp,
+    )
 
-#     file_for_Training = os.path.join(
-#         output_dir_patches_output, "opm_train.csv"
-#     )
-#     # read and parse csv
-#     parameters = parseConfigGAN(
-#         testingDir + "/config_generation.yaml", version_check_flag=False
-#     )
+    file_for_Training = os.path.join(
+        output_dir_patches_output, "opm_train.csv"
+    )
+    # read and parse csv
+    parameters = parseConfigGAN(
+        testingDir + "/config_generation.yaml", version_check_flag=False
+    )
 
-#     training_data, parameters["headers"] = parseTrainingCSV(file_for_Training)
-#     parameters["patch_size"] = patch_size["2D"]
-#     parameters["modality"] = "histo"
-#     parameters["model"]["dimension"] = 2
-#     parameters["model"]["class_list"] = [0, 255]
-#     parameters["model"]["amp"] = True
-#     parameters["model"]["num_channels"] = 3
-#     parameters = populate_header_in_parameters(
-#         parameters, parameters["headers"]
-#     )
-#     parameters["model"]["architecture"] = "dcgan"
-#     parameters["nested_training"]["testing"] = 1
-#     parameters["nested_training"]["validation"] = -2
-#     parameters["model"]["onnx_export"] = True  # not supported currently
-#     parameters["model"]["print_summary"] = True
-#     parameters["data_preprocessing"]["resize_image"] = [128, 128]
-#     modelDir = os.path.join(outputDir, "modelDir")
-#     Path(modelDir).mkdir(parents=True, exist_ok=True)
-#     TrainingManagerGAN(
-#         dataframe=training_data,
-#         outputDir=modelDir,
-#         parameters=parameters,
-#         device=device,
-#         resume=False,
-#         reset=True,
-#     )
-#     inference_data, parameters["headers"] = parseTrainingCSV(
-#         inputDir + "/train_2d_histo_generation.csv", train=False
-#     )
-#     inference_data.drop(index=inference_data.index[-1], axis=0, inplace=True)
-#     InferenceManagerGAN(
-#         dataframe=inference_data,
-#         modelDir=modelDir,
-#         parameters=parameters,
-#         device=device,
-#     )
+    training_data, parameters["headers"] = parseTrainingCSV(file_for_Training)
+    parameters["patch_size"] = patch_size["2D"]
+    parameters["modality"] = "histo"
+    parameters["model"]["dimension"] = 2
+    parameters["model"]["class_list"] = [0, 255]
+    parameters["model"]["amp"] = True
+    parameters["model"]["num_channels"] = 3
+    parameters = populate_header_in_parameters(
+        parameters, parameters["headers"]
+    )
+    parameters["model"]["architecture"] = "dcgan"
+    parameters["nested_training"]["testing"] = 1
+    parameters["nested_training"]["validation"] = -2
+    parameters["model"]["onnx_export"] = True  # not supported currently
+    parameters["model"]["print_summary"] = True
+    parameters["data_preprocessing"]["resize_image"] = [128, 128]
+    modelDir = os.path.join(outputDir, "modelDir")
+    Path(modelDir).mkdir(parents=True, exist_ok=True)
+    TrainingManagerGAN(
+        dataframe=training_data,
+        outputDir=modelDir,
+        parameters=parameters,
+        device=device,
+        resume=False,
+        reset=True,
+    )
+    inference_data, parameters["headers"] = parseTrainingCSV(
+        inputDir + "/train_2d_histo_generation.csv", train=False
+    )
+    inference_data.drop(index=inference_data.index[-1], axis=0, inplace=True)
+    InferenceManagerGAN(
+        dataframe=inference_data,
+        modelDir=modelDir,
+        parameters=parameters,
+        device=device,
+    )
 
-#     sanitize_outputDir()
+    sanitize_outputDir()
 
-#     print("passed")
+    print("passed")

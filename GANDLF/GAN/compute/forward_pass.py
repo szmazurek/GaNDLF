@@ -264,6 +264,11 @@ def validate_network_gan(
             affine=subject["1"]["affine"].squeeze(0),
         ).as_sitk()
         ext = get_filename_extension_sanitized(subject["1"]["path"][0])
+        ## TODO dirty bypass - for some reason, the extension is empty
+        if ext == "":
+            ext = ".png"
+        print(f"Extension: {subject['1']['path']}")
+        print(f"Extension: {ext}")
 
         fixed_latent_vector = get_fixed_latent_vector(
             batch_size=params["validation_config"]["n_generated_samples"],
@@ -275,21 +280,28 @@ def validate_network_gan(
 
         with torch.no_grad():
             fake_images_to_save = model.generator(fixed_latent_vector).cpu()
+        if params["save_grid"] and params["model"]["dimension"] == 2:
+            fake_images_tensor = fake_images_to_save.clone()
+        # TODO - think if this is correct or no
+        norm_range(fake_images_to_save)
+        fake_images_to_save *= 255
+        if params["model"]["dimension"] == 2:
+            fake_images_to_save = fake_images_to_save.permute(
+                0, 2, 3, 1
+            ).numpy()
+        else:
+            fake_images_to_save = fake_images_to_save.permute(
+                0, 2, 3, 4, 1
+            ).numpy()
         if ext in [
             ".jpg",
             ".jpeg",
             ".png",
         ]:
             # for optional later save as grid
-            fake_images_tensor = fake_images_to_save.clone()
+            # fake_images_tensor = fake_images_to_save.clone()
             # Rescale the images 0 - 1. Think if this is the best way to do it
-            norm_range(fake_images_to_save)
-            fake_images_to_save *= 255
-            fake_images_to_save = (
-                fake_images_to_save.permute(0, 2, 3, 1)
-                .numpy()
-                .astype(np.uint8)
-            )
+            fake_images_to_save = fake_images_to_save.astype(np.uint8)
         is_2d_rgb = (
             params["model"]["dimension"] == 2
             and fake_images_to_save.shape[-1] == 3
@@ -314,13 +326,7 @@ def validate_network_gan(
                 )
 
             # Create the subject directory if it doesn't exist in the
-            print(
-                os.path.join(
-                    current_output_dir,
-                    "testing",
-                    subject["subject_id"][0],
-                )
-            )
+
             os.makedirs(
                 os.path.join(
                     current_output_dir,
