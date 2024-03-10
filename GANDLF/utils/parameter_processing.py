@@ -40,12 +40,15 @@ def populate_header_in_parameters(parameters: dict, headers: dict) -> dict:
     )
 
     parameters["problem_type"] = find_problem_type(
-        parameters, get_modelbase_final_layer(parameters["model"]["final_layer"])
+        parameters,
+        get_modelbase_final_layer(parameters["model"]["final_layer"]),
     )
 
     # if the problem type is classification/segmentation, ensure the number of classes are picked from the configuration
     if parameters["problem_type"] != "regression":
-        parameters["model"]["num_classes"] = len(parameters["model"]["class_list"])
+        parameters["model"]["num_classes"] = len(
+            parameters["model"]["class_list"]
+        )
 
     return parameters
 
@@ -61,6 +64,11 @@ def find_problem_type(parameters: dict, model_final_layer: str) -> str:
     Returns:
         str: The problem type (regression/classification/segmentation).
     """
+    # I do not know if this is correct way to incorporate that, but
+    # I did not manage to find any other way to determine if we
+    # are doing synthesis or not
+    if "problem_type" in parameters.keys():
+        return parameters["problem_type"]
     # check if regression/classification has been requested
     classification_phrases = [
         "classification_but_not_softmax",
@@ -72,7 +80,8 @@ def find_problem_type(parameters: dict, model_final_layer: str) -> str:
     class_list_exist = "class_list" in parameters["model"]
     if (
         class_list_exist
-        and parameters["model"]["final_layer"].lower() in classification_phrases
+        and parameters["model"]["final_layer"].lower()
+        in classification_phrases
     ):
         return "classification"
 

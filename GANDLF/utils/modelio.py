@@ -29,7 +29,10 @@ initial_model_path_end = "_initial.pth.tar"
 
 
 def optimize_and_save_model(
-    model: torch.nn.Module, params: dict, path: str, onnx_export: Optional[bool] = True
+    model: torch.nn.Module,
+    params: dict,
+    path: str,
+    onnx_export: Optional[bool] = True,
 ) -> None:
     """
     Perform post-training optimization and save it to a file.
@@ -47,7 +50,10 @@ def optimize_and_save_model(
     # Customized imagenet_vgg no longer supported for ONNX export
     if onnx_export:
         architecture = params["model"]["architecture"]
-        if architecture in ["sdnet", "brain_age"] or "imagenet_vgg" in architecture:
+        if (
+            architecture in ["sdnet", "brain_age"]
+            or "imagenet_vgg" in architecture
+        ):
             onnx_export = False
 
     if not onnx_export:
@@ -72,9 +78,21 @@ def optimize_and_save_model(
                 )
             else:
                 dummy_input = torch.randn(
-                    (1, num_channel, input_shape[0], input_shape[1], input_shape[2])
+                    (
+                        1,
+                        num_channel,
+                        input_shape[0],
+                        input_shape[1],
+                        input_shape[2],
+                    )
                 )
-
+            # we need that for the synthesis models
+            if params["problem_type"] == "synthesis":
+                dummy_input = torch.randn(
+                    (1, params["model"]["latent_vector_size"], 1, 1)
+                )
+                if model_dimension == 3:
+                    dummy_input = dummy_input.unsqueeze(-1)
             # Export the model to ONNX format
             with torch.no_grad():
                 torch.onnx.export(
@@ -112,7 +130,12 @@ def optimize_and_save_model(
                 if model_dimension == 2:
                     ov_model = convert_model(
                         onnx_path,
-                        input_shape=(1, num_channel, input_shape[0], input_shape[1]),
+                        input_shape=(
+                            1,
+                            num_channel,
+                            input_shape[0],
+                            input_shape[1],
+                        ),
                     )
                 else:
                     ov_model = convert_model(
@@ -125,9 +148,14 @@ def optimize_and_save_model(
                             input_shape[2],
                         ),
                     )
-                ov.runtime.serialize(ov_model, xml_path=xml_path, bin_path=bin_path)
+                ov.runtime.serialize(
+                    ov_model, xml_path=xml_path, bin_path=bin_path
+                )
             except Exception as e:
-                print("WARNING: OpenVINO Model Optimizer IR conversion failed: " + e)
+                print(
+                    "WARNING: OpenVINO Model Optimizer IR conversion failed: "
+                    + e
+                )
 
 
 def save_model(
@@ -180,28 +208,32 @@ def load_model(
     # check if the model dictionary is complete
     if full_sanity_check:
         incomplete_keys = [
-            key for key in model_dict_full.keys() if key not in model_dict.keys()
+            key
+            for key in model_dict_full.keys()
+            if key not in model_dict.keys()
         ]
-        assert (
-            len(incomplete_keys) == 0
-        ), "Model dictionary is incomplete; the following keys are missing: " + str(
-            incomplete_keys
+        assert len(incomplete_keys) == 0, (
+            "Model dictionary is incomplete; the following keys are missing: "
+            + str(incomplete_keys)
         )
 
     # check if required keys are absent, and if so raise an error
     incomplete_required_keys = [
-        key for key in model_dict_required.keys() if key not in model_dict.keys()
+        key
+        for key in model_dict_required.keys()
+        if key not in model_dict.keys()
     ]
-    assert (
-        len(incomplete_required_keys) == 0
-    ), "Model dictionary is incomplete; the following keys are missing: " + str(
-        incomplete_required_keys
+    assert len(incomplete_required_keys) == 0, (
+        "Model dictionary is incomplete; the following keys are missing: "
+        + str(incomplete_required_keys)
     )
 
     return model_dict
 
 
-def load_ov_model(path: str, device: Optional[str] = "CPU") -> Tuple[Any, Any, Any]:
+def load_ov_model(
+    path: str, device: Optional[str] = "CPU"
+) -> Tuple[Any, Any, Any]:
     """
     Load an OpenVINO IR model from an .xml file.
 
@@ -216,17 +248,23 @@ def load_ov_model(path: str, device: Optional[str] = "CPU") -> Tuple[Any, Any, A
     try:
         from openvino import runtime as ov
     except ImportError:
-        raise ImportError("OpenVINO inference engine is not configured correctly.")
+        raise ImportError(
+            "OpenVINO inference engine is not configured correctly."
+        )
 
     core = ov.Core()
     if device.lower() == "cuda":
         device = "GPU"
 
     if device == "GPU":
-        core.set_property({"CACHE_DIR": os.path.dirname(os.path.abspath(path))})
+        core.set_property(
+            {"CACHE_DIR": os.path.dirname(os.path.abspath(path))}
+        )
 
     model = core.read_model(model=path, weights=path.replace("xml", "bin"))
-    compiled_model = core.compile_model(model=model, device_name=device.upper())
+    compiled_model = core.compile_model(
+        model=model, device_name=device.upper()
+    )
     input_layer = compiled_model.inputs
     output_layer = compiled_model.outputs
 

@@ -66,11 +66,16 @@ def one_hot(
                 for case in special_cases_to_check:
                     if case in _class:
                         special_class_split = _class.split(case)
-                        bin_mask = segmask_array_iter == int(special_class_split[0])
+                        bin_mask = segmask_array_iter == int(
+                            special_class_split[0]
+                        )
                         for i in range(1, len(special_class_split)):
                             bin_mask = torch.logical_or(
                                 bin_mask,
-                                (segmask_array_iter == int(special_class_split[i])),
+                                (
+                                    segmask_array_iter
+                                    == int(special_class_split[i])
+                                ),
                             )
                     else:
                         # assume that it is a simple int
@@ -84,7 +89,9 @@ def one_hot(
     return batch_stack
 
 
-def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], List[str]]) -> np.array:
+def reverse_one_hot(
+    predmask_tensor: torch.Tensor, class_list: Union[List[int], List[str]]
+) -> np.array:
     """
     This function creates a full segmentation mask Tensor from a one-hot-encoded mask and specified class list
 
@@ -101,7 +108,9 @@ def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], 
     for _class in class_list:
         for case in special_cases_to_check:
             if isinstance(_class, str):
-                if case in _class:  # check if any of the special cases are present
+                if (
+                    case in _class
+                ):  # check if any of the special cases are present
                     special_case_detected = True
                     break
 
@@ -130,7 +139,11 @@ def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], 
 
 
 def send_model_to_device(
-    model: torch.nn.Module, amp: bool, device: str, optimizer: torch.optim
+    model: torch.nn.Module,
+    amp: bool,
+    device: str,
+    optimizer_1: torch.optim,
+    optimizer_2: torch.optim,
 ) -> Union[torch.nn.Module, bool, torch.device, int]:
     """
     This function reads the environment variable(s) and send model to correct device
@@ -139,7 +152,10 @@ def send_model_to_device(
         model (torch.nn.Module): The model that needs to be sent to specified device.
         amp (bool): Whether automatic mixed precision is to be used.
         device (str): Device type.
-        optimizer (torch.optim): The optimizer for training.
+        optimizer_1 (torch.optim): The optimizer for training. In case of GANs, this
+    is the optimizer for the generator.
+        optimizer_2 (torch.optim): The second optimizer, used only in case of GANs.
+    This is the optimizer for the discriminator.
 
     Returns:
         torch.nn.Module: The model after it has been sent to specified device
@@ -147,7 +163,9 @@ def send_model_to_device(
         torch.device: Device type.
     """
     if device == "cuda":
-        assert torch.cuda.is_available(), "CUDA is either not available or not enabled"
+        assert (
+            torch.cuda.is_available()
+        ), "CUDA is either not available or not enabled"
         assert (
             os.environ.get("CUDA_VISIBLE_DEVICES") is not None
         ), "CUDA_VISIBLE_DEVICES is not set"
@@ -184,7 +202,8 @@ def send_model_to_device(
             print(
                 "Memory Total : ",
                 round(
-                    torch.cuda.get_device_properties(dev_int).total_memory / 1024**3,
+                    torch.cuda.get_device_properties(dev_int).total_memory
+                    / 1024**3,
                     1,
                 ),
                 "GB, Allocated: ",
@@ -204,9 +223,11 @@ def send_model_to_device(
             )
         )
 
-        if not (optimizer is None):
+        if not (optimizer_1 is None):
             # ensuring optimizer is in correct device - https://github.com/pytorch/pytorch/issues/8741
-            optimizer.load_state_dict(optimizer.state_dict())
+            optimizer_1.load_state_dict(optimizer_1.state_dict())
+        if not (optimizer_2 is None):
+            optimizer_2.load_state_dict(optimizer_2.state_dict())
 
     else:
         dev = -1
@@ -218,7 +239,9 @@ def send_model_to_device(
     return model, amp, device, dev
 
 
-def get_model_dict(model: torch.nn.Module, device_id: Union[str, List[str]]) -> dict:
+def get_model_dict(
+    model: torch.nn.Module, device_id: Union[str, List[str]]
+) -> dict:
     """
     This function returns the model dictionary
 
@@ -258,7 +281,9 @@ def get_class_imbalance_weights_classification(
         Tuple[dict, dict, dict]: The penalty weights, sampling weights, and class weights for different classes under consideration.
     """
     predictions_array = (
-        training_df[training_df.columns[params["headers"]["predictionHeaders"]]]
+        training_df[
+            training_df.columns[params["headers"]["predictionHeaders"]]
+        ]
         .to_numpy()
         .ravel()
     )
@@ -269,7 +294,9 @@ def get_class_imbalance_weights_classification(
 
     # for the classes that are present in the training set, construct the weights as needed
     for i in classes_to_predict:
-        weight_dict[i] = (class_count[i] + sys.float_info.epsilon) / total_count
+        weight_dict[i] = (
+            class_count[i] + sys.float_info.epsilon
+        ) / total_count
         penalty_dict[i] = (1 + sys.float_info.epsilon) / weight_dict[i]
 
     # this is a corner case
@@ -328,15 +355,18 @@ def get_class_imbalance_weights_segmentation(
     # For classification this should be calculated on the basis of predicted labels and mask
     # iterate through full penalty data
     for _, (subject) in enumerate(
-        tqdm(penalty_loader, desc="Looping over training data for penalty calculation")
+        tqdm(
+            penalty_loader,
+            desc="Looping over training data for penalty calculation",
+        )
     ):
         # accumulate dice weights for each label
         mask = subject["label"][torchio.DATA]
         one_hot_mask = one_hot(mask, parameters["model"]["class_list"])
         for i in range(0, len(parameters["model"]["class_list"])):
-            currentNumber = torch.nonzero(one_hot_mask[:, i, ...], as_tuple=False).size(
-                0
-            )
+            currentNumber = torch.nonzero(
+                one_hot_mask[:, i, ...], as_tuple=False
+            ).size(0)
             # class-specific non-zero voxels
             abs_dict[i] += currentNumber
             # total number of non-zero voxels to be considered
@@ -386,7 +416,9 @@ def get_class_imbalance_weights(
         # this default is needed for openfl
         params["previous_parameters"] = params.get("previous_parameters", None)
         if params["previous_parameters"] is not None:
-            previous_training_hash = params["previous_parameters"]["training_data_hash"]
+            previous_training_hash = params["previous_parameters"][
+                "training_data_hash"
+            ]
             current_training_data_hash = params.get(
                 "training_data_hash", hash_pandas_object(training_df).sum()
             )
@@ -399,7 +431,8 @@ def get_class_imbalance_weights(
 
         # calculate the penalty/sampling weights only if one of the following conditions are met
         if (params["weighted_loss"] and (penalty_weights is None)) or (
-            params["patch_sampler"]["biased_sampling"] and (sampling_weights is None)
+            params["patch_sampler"]["biased_sampling"]
+            and (sampling_weights is None)
         ):
             print("Calculating weights")
             if params["problem_type"] == "classification":
@@ -407,7 +440,9 @@ def get_class_imbalance_weights(
                     penalty_weights,
                     sampling_weights,
                     class_weights,
-                ) = get_class_imbalance_weights_classification(training_df, params)
+                ) = get_class_imbalance_weights_classification(
+                    training_df, params
+                )
             elif params["problem_type"] == "segmentation":
                 # Set up the dataloader for penalty calculation
                 from GANDLF.data.ImagesFromDataFrame import ImagesFromDataFrame
@@ -430,7 +465,9 @@ def get_class_imbalance_weights(
                     penalty_weights,
                     sampling_weights,
                     class_weights,
-                ) = get_class_imbalance_weights_segmentation(penalty_loader, params)
+                ) = get_class_imbalance_weights_segmentation(
+                    penalty_loader, params
+                )
                 del penalty_data, penalty_loader
         else:
             print("Using weights from config file")
@@ -475,7 +512,9 @@ def print_model_summary(
         input_patch_size (tuple): The input patch size.
         device (Optional[torch.device], optional): The device. Defaults to None.
     """
-    input_size = (input_batch_size, input_num_channels) + tuple(input_patch_size)
+    input_size = (input_batch_size, input_num_channels) + tuple(
+        input_patch_size
+    )
     if input_size[-1] == 1:
         input_size = input_size[:-1]
     try:
@@ -483,12 +522,22 @@ def print_model_summary(
 
         print("Model Summary:")
         print("\tInput size:", stats.to_megabytes(stats.total_input), "MB")
-        print("\tOutput size:", stats.to_megabytes(stats.total_output_bytes), "MB")
-        print("\tParameters size:", stats.to_megabytes(stats.total_param_bytes), "MB")
+        print(
+            "\tOutput size:",
+            stats.to_megabytes(stats.total_output_bytes),
+            "MB",
+        )
+        print(
+            "\tParameters size:",
+            stats.to_megabytes(stats.total_param_bytes),
+            "MB",
+        )
         print(
             "\tEstimated total size:",
             stats.to_megabytes(
-                stats.total_input + stats.total_output_bytes + stats.total_param_bytes
+                stats.total_input
+                + stats.total_output_bytes
+                + stats.total_param_bytes
             ),
             "MB",
         )
@@ -524,7 +573,9 @@ def get_ground_truths_and_predictions_tensor(
 
 
 def get_output_from_calculator(
-    prediction: torch.Tensor, target: torch.tensor, calculator: torchmetrics.Metric
+    prediction: torch.Tensor,
+    target: torch.tensor,
+    calculator: torchmetrics.Metric,
 ) -> float:
     """
     Helper function to get the output from a calculator.
@@ -556,7 +607,9 @@ def get_tensor_from_image(input_image: Union[sitk.Image, str]) -> torch.Tensor:
         torch.Tensor: The converted torch tensor.
     """
     input_image = (
-        sitk.ReadImage(input_image) if isinstance(input_image, str) else input_image
+        sitk.ReadImage(input_image)
+        if isinstance(input_image, str)
+        else input_image
     )
     return torch.from_numpy(sitk.GetArrayFromImage(input_image))
 
