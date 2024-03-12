@@ -45,7 +45,6 @@ from .MSDNet import MSDNet
 from .brain_age import brainage
 from .unetr import unetr
 from .transunet import transunet
-from .dcgan import DCGAN
 
 # Define a dictionary of model architectures and corresponding functions
 global_models_dict = {
