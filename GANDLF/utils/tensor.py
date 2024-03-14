@@ -108,9 +108,10 @@ def reverse_one_hot(
     for _class in class_list:
         for case in special_cases_to_check:
             if isinstance(_class, str):
+                # check if any of the special cases are present
                 if (
                     case in _class
-                ):  # check if any of the special cases are present
+                ):
                     special_case_detected = True
                     break
 
