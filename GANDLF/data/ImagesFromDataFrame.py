@@ -92,12 +92,12 @@ def ImagesFromDataFrame(
 
     # helper function to save the resized images
     def _save_resized_images(
-        resized_image,
-        output_dir,
-        subject_id,
-        channel_str,
-        loader_type,
-        extension,
+        resized_image: str,
+        output_dir: str,
+        subject_id: str,
+        channel_str: str,
+        loader_type: str,
+        extension: str,
     ):
         """
         Helper function to save the resized images
