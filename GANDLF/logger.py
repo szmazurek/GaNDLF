@@ -12,9 +12,7 @@ import torch
 
 
 class Logger:
-    def __init__(
-        self, logger_csv_filename: str, metrics: Dict[str, float]
-    ) -> None:
+    def __init__(self, logger_csv_filename: str, metrics: Dict[str, float]) -> None:
         """
         Logger class to log the training and validation metrics to a csv file.
 
@@ -31,10 +29,7 @@ class Logger:
             mode_lower = mode.lower()
             row = "epoch_no," + mode_lower + "_loss,"
             row += (
-                ",".join(
-                    [mode_lower + "_" + metric for metric in self.metrics]
-                )
-                + ","
+                ",".join([mode_lower + "_" + metric for metric in self.metrics]) + ","
             )
             row = row[:-1]
             row += "\n"
@@ -79,13 +74,21 @@ class Logger:
 
 
 class LoggerGAN:
-    def __init__(self, logger_csv_filename, metrics):
+    def __init__(self, logger_csv_filename: str, metrics: Dict[str, float]) -> None:
+        """
+        Logger class to log the training and validation metrics to a csv file.
+
+        Args:
+            logger_csv_filename (str): Path to a filename where the csv has to be stored.
+            metrics (Dict[str, float]): The metrics to be logged.
+        """
         self.filename = logger_csv_filename
         self.metrics = metrics
 
     def write_header(self, mode: str = "train") -> None:
         """Create a header for the csv file when training GAN networks
-        Parameters:
+
+        Args:
             mode (str): "train" or "valid" or "test"
         """
         with open(self.filename, "a") as log_file:
@@ -108,9 +111,7 @@ class LoggerGAN:
                         + "_disc_real_loss,"
                     )
                 row += (
-                    ",".join(
-                        [mode_lower + "_" + metric for metric in self.metrics]
-                    )
+                    ",".join([mode_lower + "_" + metric for metric in self.metrics])
                     + ","
                 )
                 row = row[:-1]
@@ -119,9 +120,12 @@ class LoggerGAN:
 
     @staticmethod
     def _parse_input_value(numeric_input: Union[float, torch.Tensor]) -> str:
-        """Parse the input value to a string
-        Parameters:
-            numeric_input (float or torch.Tensor): The input value
+        """
+        Parse the input value to a string
+
+        Args:
+            numeric_input (float or torch.Tensor): The input value.
+
         Returns:
             str: The parsed input value
         """
@@ -139,11 +143,12 @@ class LoggerGAN:
     ) -> None:
         """
         Write the metrics to the csv file.
-        Parameters:
-            epoch_number (int): The epoch number
-            disc_loss (float or torch.Tensor): The discriminator loss
-            gen_loss (float or torch.Tensor): The generator loss
-            epoch_metrics (dict): The epoch metrics
+
+        Args:
+            epoch_number (int): The epoch number.
+            disc_loss (float or torch.Tensor): The discriminator loss.
+            gen_loss (float or torch.Tensor): The generator loss.
+            epoch_metrics (Dict[str, Union[float, torch.Tensor]]): The metrics to be logged.
         """
         with open(self.filename, "a") as log_file:
             row = ""
