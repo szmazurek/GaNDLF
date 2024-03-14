@@ -101,7 +101,7 @@ def create_pytorch_objects(
         parameters["device"],
         parameters["device_id"],
     ) = send_model_to_device(
-        model, amp=parameters["model"]["amp"], device=device, optimizer=optimizer
+        model, amp=parameters["model"]["amp"], device=device, optimizers=[optimizer]
     )
 
     # only need to create scheduler if training
