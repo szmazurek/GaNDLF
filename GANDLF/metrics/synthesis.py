@@ -230,6 +230,49 @@ def ncc_min(prediction: torch.Tensor, target: torch.Tensor) -> float:
     return stats_filter.GetMinimum()
 
 
+def _structural_similarity_index_measure(
+    generated_images: torch.Tensor,
+    real_images: torch.Tensor,
+    params: Dict[str, Any],
+) -> torch.Tensor:
+    """
+    This function computes the SSIM between the generated images and the real
+    images. Except for the params specified below, the rest of the params are
+    default from torchmetrics. Works both for 2D and 3D images.
+    Args:
+        generated_images (torch.Tensor): The generated images.
+        real_images (torch.Tensor): The real images.
+        params (dict): The parameter dictionary containing training and data
+    Returns:
+        torch.Tensor: The SSIM score.
+    """
+
+    def _get_reduction(params: Dict[str, Any]) -> str:
+        """This function returns the reduction type from config."""
+        # check if metrics have config
+        if "metrics_config" in params:
+            # check if ssim has config
+            if "ssim" in params["metrics_config"]:
+                # check if reduction is present
+                if "reduction" in params["metrics_config"]["ssim"]:
+                    return params["metrics_config"]["ssim"]["reduction"]
+        return "elementwise_mean"
+
+    reduction = _get_reduction(params)
+    if reduction not in ["elementwise_mean", "sum"]:
+        warnings.warn(
+            f"Reduction type {reduction} not supported. Defaulting to "
+            "elementwise_mean.",
+            UserWarning,
+        )
+        reduction = "elementwise_mean"
+
+    if params["model"]["dimension"] == 2:
+        real_images = real_images.squeeze(-1)
+    ssim = StructuralSimilarityIndexMeasure(reduction=reduction)  # type: ignore
+    return ssim(generated_images, real_images)
+
+
 def ferechet_inception_distance(
     generated_images: torch.Tensor,
     real_images: torch.Tensor,
@@ -538,3 +581,23 @@ def lpips(
     return _learned_perceptual_image_patch_similarity(
         generated_images, real_images, params
     )
+
+
+def ssim_gans(
+    generated_images: torch.Tensor,
+    real_images: torch.Tensor,
+    params: Dict[str, Any],
+) -> torch.Tensor:
+    """
+    This function computes the SSIM between the generated images and the real
+    images. Except for the params specified below, the rest of the params are
+    default from torchmetrics.
+    Args:
+        generated_images (torch.Tensor): The generated images.
+        real_images (torch.Tensor): The real images.
+        params (dict): The parameter dictionary containing training and data
+    information.
+    Returns:
+        torch.Tensor: The SSIM score.
+    """
+    return _structural_similarity_index_measure(generated_images, real_images, params)

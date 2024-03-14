@@ -39,6 +39,7 @@ from .synthesis import (
     ncc_min,
     fid,
     lpips,
+    ssim_gans,
 )
 import GANDLF.metrics.classification as classification
 import GANDLF.metrics.regression as regression
@@ -80,7 +81,7 @@ global_metrics_dict = {
     "specificity_segmentation_per_label": specificity_segmentation_per_label,
     "jaccard": jaccard,
     "jaccard_per_label": jaccard_per_label,
-    "ssim": structural_similarity_index,
+    "ssim_gan": ssim_gans,
     "fid": fid,
     "lpips": lpips,
 }
