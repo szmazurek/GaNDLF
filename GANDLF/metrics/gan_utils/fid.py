@@ -370,6 +370,8 @@ class FrechetInceptionDistance(Metric):
     def update(self, imgs: Tensor, real: bool) -> None:
         """Update the state with extracted features."""
         imgs = (imgs * 255).byte() if self.normalize else imgs
+        # assets that the input is a tensor of 2D images
+        assert imgs.dim() == 4, f"Expected 4D input, got {imgs.dim()}D"
         features = self.inception(imgs)
         self.orig_dtype = features.dtype
         features = features.double()
@@ -488,22 +490,3 @@ class FrechetInceptionDistance(Metric):
 
         """
         return self._plot(val, ax)
-
-
-if __name__ == "__main__":
-    rand_img_1 = torch.randint(0, 255, (10, 3, 100, 100), dtype=torch.uint8)
-    rand_img_2 = torch.randint(0, 255, (10, 3, 100, 100), dtype=torch.uint8)
-    metric = FrechetInceptionDistance(feature=64)
-    print(metric.inception)
-    converter = SoftACSConverter(metric.inception)
-    print(converter)
-    # metric.update(rand_img_1, real=True)
-    # metric.update(rand_img_2, real=False)
-    # print(metric.compute())
-    # import torchvision
-
-    # net = torchvision.models.inception_v3(
-    #     torchvision.models.Inception_V3_Weights.IMAGENET1K_V1
-    # )
-    # print(net)
-    # converter = SoftACSConverter(net)

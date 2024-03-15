@@ -179,7 +179,7 @@ def _valid_img(img: Tensor, normalize: bool) -> bool:
     Returns:
         bool: whether input is valid
     """
-    value_check = value_check = (
+    value_check = (
         img.max() <= 1.0 and img.min() >= 0.0 if normalize else img.min() >= -1
     )
     return (img.ndim == 4 or img.ndim == 5) and value_check
