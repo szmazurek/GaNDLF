@@ -51,11 +51,10 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
         features_list: List[str],
         feature_extractor_weights_path: Optional[str] = None,
     ) -> None:
-        if not _TORCH_FIDELITY_AVAILABLE:
-            raise ModuleNotFoundError(
-                "NoTrainInceptionV3 module requires that `Torch-fidelity` is installed."
-                " Either install as `pip install torchmetrics[image]` or `pip install torch-fidelity`."
-            )
+        assert _TORCH_FIDELITY_AVAILABLE, (
+            "NoTrainInceptionV3 module requires that `Torch-fidelity` is installed."
+            " Either install as `pip install torchmetrics[image]` or `pip install torch-fidelity`."
+        )
 
         super().__init__(name, features_list, feature_extractor_weights_path)
         # put into evaluation mode
@@ -98,9 +97,7 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
 
         if "64" in remaining_features:
             features["64"] = (
-                adaptive_avg_pool2d(x, output_size=(1, 1))
-                .squeeze(-1)
-                .squeeze(-1)
+                adaptive_avg_pool2d(x, output_size=(1, 1)).squeeze(-1).squeeze(-1)
             )
             remaining_features.remove("64")
             if len(remaining_features) == 0:
@@ -112,9 +109,7 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
 
         if "192" in remaining_features:
             features["192"] = (
-                adaptive_avg_pool2d(x, output_size=(1, 1))
-                .squeeze(-1)
-                .squeeze(-1)
+                adaptive_avg_pool2d(x, output_size=(1, 1)).squeeze(-1).squeeze(-1)
             )
             remaining_features.remove("192")
             if len(remaining_features) == 0:
@@ -131,9 +126,7 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
 
         if "768" in remaining_features:
             features["768"] = (
-                adaptive_avg_pool2d(x, output_size=(1, 1))
-                .squeeze(-1)
-                .squeeze(-1)
+                adaptive_avg_pool2d(x, output_size=(1, 1)).squeeze(-1).squeeze(-1)
             )
             remaining_features.remove("768")
             if len(remaining_features) == 0:
@@ -172,9 +165,7 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
         return out[0].reshape(x.shape[0], -1)
 
 
-def _compute_fid(
-    mu1: Tensor, sigma1: Tensor, mu2: Tensor, sigma2: Tensor
-) -> Tensor:
+def _compute_fid(mu1: Tensor, sigma1: Tensor, mu2: Tensor, sigma2: Tensor) -> Tensor:
     r"""Compute adjusted version of `Fid Score`_.
 
     The Frechet Inception Distance between two multivariate Gaussians X_x ~ N(mu_1, sigm_1)
@@ -255,15 +246,15 @@ class FrechetInceptionDistance(Metric):
         forward pass and expect a tensor of shape ``(1, num_features)`` as output.
 
     Raises:
-        ValueError:
+        AssertionError:
             If torch version is lower than 1.9
-        ModuleNotFoundError:
+        AssertionError:
             If ``feature`` is set to an ``int`` (default settings) and ``torch-fidelity`` is not installed
-        ValueError:
+        AssertionError:
             If ``feature`` is set to an ``int`` not in [64, 192, 768, 2048]
-        TypeError:
+        AssertionError:
             If ``feature`` is not an ``str``, ``int`` or ``torch.nn.Module``
-        ValueError:
+        AssertionError:
             If ``reset_real_features`` is not an ``bool``
 
     Example:
@@ -305,18 +296,20 @@ class FrechetInceptionDistance(Metric):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+        assert isinstance(feature, (int, Module)), (
+            "Argument `feature` expected to be an int or torch.nn.Module, but got"
+            f" {type(feature)}."
+        )
         if isinstance(feature, int):
             num_features = feature
-            if not _TORCH_FIDELITY_AVAILABLE:
-                raise ModuleNotFoundError(
-                    "FrechetInceptionDistance metric requires that `Torch-fidelity` is installed."
-                    " Either install as `pip install torchmetrics[image]` or `pip install torch-fidelity`."
-                )
+            assert _TORCH_FIDELITY_AVAILABLE, (
+                "FrechetInceptionDistance metric requires that `Torch-fidelity` is installed."
+                " Either install as `pip install torchmetrics[image]` or `pip install torch-fidelity`."
+            )
             valid_int_input = (64, 192, 768, 2048)
-            if feature not in valid_int_input:
-                raise ValueError(
-                    f"Integer input to argument `feature` must be one of {valid_int_input}, but got {feature}."
-                )
+            assert (
+                feature in valid_int_input
+            ), f"Integer input to argument `feature` must be one of {valid_int_input}, but got {feature}."
 
             self.inception = NoTrainInceptionV3(
                 name="inception-v3-compat", features_list=[str(feature)]
@@ -327,21 +320,18 @@ class FrechetInceptionDistance(Metric):
             if hasattr(self.inception, "num_features"):
                 num_features = self.inception.num_features
             else:
-                dummy_image = torch.randint(
-                    0, 255, (1, 3, 299, 299), dtype=torch.uint8
-                )
+                dummy_image = torch.randint(0, 255, (1, 3, 299, 299), dtype=torch.uint8)
                 num_features = self.inception(dummy_image).shape[-1]
-        else:
-            raise TypeError("Got unknown input to argument `feature`")
 
-        if not isinstance(reset_real_features, bool):
-            raise ValueError(
-                "Argument `reset_real_features` expected to be a bool"
-            )
+        assert isinstance(reset_real_features, bool), (
+            "Argument `reset_real_features` expected to be a bool, but got"
+            f" {type(reset_real_features)}."
+        )
         self.reset_real_features = reset_real_features
+        assert isinstance(normalize, bool), (
+            "Argument `normalize` expected to be a bool, but got" f" {type(normalize)}."
+        )
 
-        if not isinstance(normalize, bool):
-            raise ValueError("Argument `normalize` expected to be a bool")
         self.normalize = normalize
 
         mx_num_feats = (num_features, num_features)
@@ -397,19 +387,16 @@ class FrechetInceptionDistance(Metric):
 
     def compute(self) -> Tensor:
         """Calculate FID score based on accumulated extracted features from the two distributions."""
-        if (
-            self.real_features_num_samples < 2
-            or self.fake_features_num_samples < 2
-        ):
-            raise RuntimeError(
-                "More than one sample is required for both the real and fake distributed to compute FID"
-            )
-        mean_real = (
-            self.real_features_sum / self.real_features_num_samples
-        ).unsqueeze(0)
-        mean_fake = (
-            self.fake_features_sum / self.fake_features_num_samples
-        ).unsqueeze(0)
+        assert (
+            self.real_features_num_samples < 2 or self.fake_features_num_samples < 2
+        ), "More than one sample is required for both the real and fake distributed to compute FID"
+
+        mean_real = (self.real_features_sum / self.real_features_num_samples).unsqueeze(
+            0
+        )
+        mean_fake = (self.fake_features_sum / self.fake_features_num_samples).unsqueeze(
+            0
+        )
 
         cov_real_num = (
             self.real_features_cov_sum
@@ -430,9 +417,7 @@ class FrechetInceptionDistance(Metric):
         if not self.reset_real_features:
             real_features_sum = deepcopy(self.real_features_sum)
             real_features_cov_sum = deepcopy(self.real_features_cov_sum)
-            real_features_num_samples = deepcopy(
-                self.real_features_num_samples
-            )
+            real_features_num_samples = deepcopy(self.real_features_num_samples)
             super().reset()
             self.real_features_sum = real_features_sum
             self.real_features_cov_sum = real_features_cov_sum
