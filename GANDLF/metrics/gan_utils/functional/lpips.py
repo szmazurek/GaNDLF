@@ -18,9 +18,7 @@ from acsconv.converters import (
 )
 
 
-def _spatial_average(
-    in_tens: Tensor, n_dims: int, keep_dim: bool = True
-) -> Tensor:
+def _spatial_average(in_tens: Tensor, n_dims: int, keep_dim: bool = True) -> Tensor:
     """Spatial averaging over height and width of images."""
 
     if n_dims == 3:
@@ -30,9 +28,7 @@ def _spatial_average(
 
 def _upsample(in_tens: Tensor, out_hw: Tuple[int, ...] = (64, 64)) -> Tensor:
     """Upsample input with bilinear interpolation."""
-    return nn.Upsample(size=out_hw, mode="bilinear", align_corners=False)(
-        in_tens
-    )
+    return nn.Upsample(size=out_hw, mode="bilinear", align_corners=False)(in_tens)
 
 
 def _normalize_tensor(in_feat: Tensor, eps: float = 1e-8) -> Tensor:
@@ -85,9 +81,7 @@ class _LPIPSGandlf(nn.Module):
             self.chns = [64, 128, 256, 384, 384, 512, 512]
         self.L = len(self.chns)
 
-        self.net = net_type(
-            pretrained=not self.pnet_rand, requires_grad=self.pnet_tune
-        )
+        self.net = net_type(pretrained=not self.pnet_rand, requires_grad=self.pnet_tune)
 
         self.lin0 = NetLinLayer(self.chns[0], use_dropout=use_dropout)
         self.lin1 = NetLinLayer(self.chns[1], use_dropout=use_dropout)
@@ -136,9 +130,7 @@ class _LPIPSGandlf(nn.Module):
             in0_input = _resize_tensor(in0_input, size=self.resize)
             in1_input = _resize_tensor(in1_input, size=self.resize)
         with torch.no_grad():
-            outs0, outs1 = self.net.forward(in0_input), self.net.forward(
-                in1_input
-            )
+            outs0, outs1 = self.net.forward(in0_input), self.net.forward(in1_input)
             feats0, feats1, diffs = {}, {}, {}
 
             for kk in range(self.L):
@@ -206,15 +198,14 @@ def lpips_update(
         Tuple[Tensor, Union[int, Tensor]]: loss and total number of images
 
     """
-    if not (_valid_img(img1, normalize) and _valid_img(img2, normalize)):
-        raise ValueError(
-            "Expected both inputs to be 4D or 5D with shape "
-            "[N x C x H x W] or [N x C x D x H x W]"
-            f"Got input with shape {img1.shape} and {img2.shape}."
-            f" {[img1.min(), img1.max()]} and {[img2.min(), img2.max()]} "
-            f" when all values are expected to be in the "
-            f"{[0,1] if normalize else [-1,1]} range."
-        )
+    assert _valid_img(img1, normalize) and _valid_img(img2, normalize), (
+        "Expected both inputs to be 4D or 5D with shape "
+        "[N x C x H x W] or [N x C x D x H x W]"
+        f"Got input with shape {img1.shape} and {img2.shape}."
+        f" {[img1.min(), img1.max()]} and {[img2.min(), img2.max()]} "
+        f" when all values are expected to be in the "
+        f"{[0,1] if normalize else [-1,1]} range."
+    )
 
     loss = net(img1, img2, normalize=normalize).squeeze()
     return loss, img1.shape[0]
@@ -249,14 +240,16 @@ def determine_converter(
         Union[None, SoftACSConverter, ACSConverter, Conv3dConverter]: the
     converter to use.
     """
+    assert converter_type in ["soft", "acs", "conv3d", None], (
+        f"Expected converter_type to be one of 'soft', 'acs', 'conv3d' or None."
+        f" Got {converter_type}."
+    )
     if converter_type is None or converter_type == "soft":
         converter = SoftACSConverter
     elif converter_type == "acs":
         converter = ACSConverter
     elif converter_type == "conv3d":
         converter = Conv3dConverter
-    else:
-        raise ValueError(f"Unknown converter type {converter_type}")
     return converter
 
 

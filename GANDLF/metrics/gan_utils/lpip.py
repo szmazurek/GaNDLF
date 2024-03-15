@@ -60,23 +60,20 @@ class LPIPSGandlf(Metric):
         super().__init__(**kwargs)
 
         valid_net_type = ("vgg", "alex", "squeeze")
-        if net_type not in valid_net_type:
-            raise ValueError(
-                f"Argument `net_type` must be one of {valid_net_type}, but got {net_type}."
-            )
+        assert (
+            net_type in valid_net_type
+        ), f"Invalid net_type: {net_type}, expected one of {valid_net_type}"
         self.net = _NoTrainLpipsLPIPSGandlf(n_dim=n_dim, net=net_type)
 
         valid_reduction = ("mean", "sum")
-        if reduction not in valid_reduction:
-            raise ValueError(
-                f"Argument `reduction` must be one of {valid_reduction}, but got {reduction}"
-            )
-        self.reduction = reduction
+        assert (
+            reduction in valid_reduction
+        ), f"Invalid reduction: {reduction}, expected one of {valid_reduction}"
 
-        if not isinstance(normalize, bool):
-            raise ValueError(
-                f"Argument `normalize` should be an bool but got {normalize}"
-            )
+        self.reduction = reduction
+        assert isinstance(
+            normalize, bool
+        ), f"normalize should be a bool, got {normalize}"
         self.normalize = normalize
 
         self.add_state("sum_scores", torch.tensor(0.0), dist_reduce_fx="sum")
@@ -91,9 +88,7 @@ class LPIPSGandlf(Metric):
 
     def update(self, img1: Tensor, img2: Tensor) -> None:
         """Update internal states with lpips score."""
-        loss, total = lpips_update(
-            img1, img2, net=self.net, normalize=self.normalize
-        )
+        loss, total = lpips_update(img1, img2, net=self.net, normalize=self.normalize)
         self.sum_scores += loss.sum()
         self.total += total
 
