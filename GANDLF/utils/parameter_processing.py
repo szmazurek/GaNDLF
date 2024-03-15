@@ -46,9 +46,7 @@ def populate_header_in_parameters(parameters: dict, headers: dict) -> dict:
 
     # if the problem type is classification/segmentation, ensure the number of classes are picked from the configuration
     if parameters["problem_type"] != "regression":
-        parameters["model"]["num_classes"] = len(
-            parameters["model"]["class_list"]
-        )
+        parameters["model"]["num_classes"] = len(parameters["model"]["class_list"])
 
     return parameters
 
@@ -80,8 +78,7 @@ def find_problem_type(parameters: dict, model_final_layer: str) -> str:
     class_list_exist = "class_list" in parameters["model"]
     if (
         class_list_exist
-        and parameters["model"]["final_layer"].lower()
-        in classification_phrases
+        and parameters["model"]["final_layer"].lower() in classification_phrases
     ):
         return "classification"
 

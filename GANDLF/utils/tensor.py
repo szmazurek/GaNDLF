@@ -333,10 +333,7 @@ def get_class_imbalance_weights_segmentation(
     # For classification this should be calculated on the basis of predicted labels and mask
     # iterate through full penalty data
     for _, (subject) in enumerate(
-        tqdm(
-            penalty_loader,
-            desc="Looping over training data for penalty calculation",
-        )
+        tqdm(penalty_loader, desc="Looping over training data for penalty calculation")
     ):
         # accumulate dice weights for each label
         mask = subject["label"][torchio.DATA]

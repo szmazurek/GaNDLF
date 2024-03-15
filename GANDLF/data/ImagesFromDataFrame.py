@@ -146,9 +146,7 @@ def ImagesFromDataFrame(
                 file_reader = sitk.ImageFileReader()
                 file_reader.SetFileName(str(dataframe[channel][patient]))
                 file_reader.ReadImageInformation()
-                subject_dict["spacing"] = torch.Tensor(
-                    file_reader.GetSpacing()
-                )
+                subject_dict["spacing"] = torch.Tensor(file_reader.GetSpacing())
 
             # if resize_image is requested, the perform per-image resize with appropriate interpolator
             if resize_images_flag:
@@ -169,9 +167,7 @@ def ImagesFromDataFrame(
                     )
                 else:
                     # always ensure resized image spacing is used
-                    subject_dict["spacing"] = torch.Tensor(
-                        img_resized.GetSpacing()
-                    )
+                    subject_dict["spacing"] = torch.Tensor(img_resized.GetSpacing())
                     subject_dict[str(channel)] = torchio.ScalarImage.from_sitk(
                         img_resized
                     )
@@ -186,12 +182,8 @@ def ImagesFromDataFrame(
             if not os.path.isfile(str(dataframe[labelHeader][patient])):
                 skip_subject = True
 
-            subject_dict["label"] = torchio.LabelMap(
-                dataframe[labelHeader][patient]
-            )
-            subject_dict["path_to_metadata"] = str(
-                dataframe[labelHeader][patient]
-            )
+            subject_dict["label"] = torchio.LabelMap(dataframe[labelHeader][patient])
+            subject_dict["path_to_metadata"] = str(dataframe[labelHeader][patient])
 
             # if resize is requested, the perform per-image resize with appropriate interpolator
             if resize_images_flag:
@@ -212,9 +204,7 @@ def ImagesFromDataFrame(
                         ),
                     )
                 else:
-                    subject_dict["label"] = torchio.LabelMap.from_sitk(
-                        img_resized
-                    )
+                    subject_dict["label"] = torchio.LabelMap.from_sitk(img_resized)
 
         else:
             subject_dict["label"] = "NA"
@@ -288,9 +278,7 @@ def ImagesFromDataFrame(
         parameters, transformations_list, train, apply_zero_crop
     )
 
-    subjects_dataset = torchio.SubjectsDataset(
-        subjects_list, transform=transform
-    )
+    subjects_dataset = torchio.SubjectsDataset(subjects_list, transform=transform)
     if not train:
         return subjects_dataset
 
@@ -307,9 +295,9 @@ def ImagesFromDataFrame(
             label_probabilities = {}
             if "sampling_weights" in parameters:
                 for class_index in parameters["sampling_weights"]:
-                    label_probabilities[class_index] = parameters[
-                        "sampling_weights"
-                    ][class_index]
+                    label_probabilities[class_index] = parameters["sampling_weights"][
+                        class_index
+                    ]
             sampler_obj = global_sampler_dict[sampler["type"]](
                 patch_size, label_probabilities=label_probabilities
             )
