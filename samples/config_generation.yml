@@ -1,0 +1,173 @@
+# Tentative documentation for the configuration file for using GANs
+# WARNING - REGARDING THE VALIDATION AND TESTING PASS, FOR NOW IT WORKS
+# ONLY IN FULL IMAGE MODE
+
+######## COMPUTATIONAL DEMANDS ###########
+# For the testing runs on the test data, the DCGAN with default config
+# and all parameters set as in this file, with batch size 128 and image 
+# size of 64x64x3, the training in CPU only machine took at peak 10GB of RAM
+# and required approx 500 epochs to see nice results (or about 50 to see anything
+# useful being generated). 
+
+###### TO KEEP IN MIND ########
+# Validation and testing are supported, but they work in the following way
+# for each pass, we are using THE SAME latent vector to generate the images
+# and we compare them with the ones from the validation or testing set to compute metrics.
+# Those images can be saved. In the future, we should implement a method where all images
+# are only for training, testing is not present and validation is done every n epochs
+# just as a generation of the images from the same latent vector and saved.
+##### INFERENCE ######## 
+# For inference, we are ONLY performing the generation of the images and saving them.
+# No metrics are computed, as the ground truth is not available.
+problem_type: synthesis # required to be set explicitly
+track_memory_usage : True
+version:
+  {
+    minimum: 0.0.14,
+    maximum: 0.0.18
+  }
+
+# A note on models
+# For DCGAN, the output layer is Tanh, therefore the input data should be normalized to [-1, 1]
+model:
+  {
+    latent_vector_size: 100, # the size of the latent vector used in generator, if not set defaults to 100
+    dimension: 2, # the dimension of the model and dataset: defines dimensionality of computations
+    base_filters: 32, # Not used
+    architecture: dcgan, # options: DCGAN
+    norm_type: batch, # can be either batch or instance
+    final_layer : sigmoid, # not used
+    class_list: [0,255], # Not used
+    amp: False, # Set if you want to use Automatic Mixed Precision for your operations or not - options: True, False
+    save_every_n_epochs: 10, # Set the frequency of saving the model
+    slope: 0.2, # the slope of the leaky relu used in the discriminator for DCGAN, needs to be in the range of 0 to 1
+    init_channels_disc : 64, # the number of channesls in the first layer of the discriminator
+    growth_rate_disc : 2, # the factor by which the number of channels in the discriminator INCREASES in each consecutive convolutional layer
+    init_channels_gen : 512, # the number of channesls in the first layer of the generator
+    growth_rate_gen : 2, # the factor by which the number of channels in the generator DECREASES in each consecutive convolutional layer
+    # n_channels: 3, # set the input channels - useful when reading RGB or images that have vectored pixel types
+  }
+metrics:
+  - ssim # Structural Similarity Index
+  # - fid # Frechet Inception Distance (ONLY FOR 2D!)
+  # - lpips # Learned Perceptual Image Patch Similarity
+# layout of the metrics configuration
+metrics_config:
+  {
+    ssim: {
+      "reduction": none}, # the reduction method for the SSIM metric, can be either 'none' or 'mean'
+    fid : {
+      "features_size": 2048, # the size of the feature vector to be used for the FID calculation, one of (64, 192, 768, 2048)
+      },
+    lpips: {
+      "net_type": squeeze, # feature extractor for the metric, either squeeze (SqeezeNet) or vgg (VGG16) or alex (AlexNet)
+      "reduction":mean, # reduction method for the LPIPS metric, can be either 'sum' or 'mean', defaults to 'mean'
+      "converter_type": soft # ASC converter type, can be either 'soft', 'acs' or 'conv3d' (used ONLY in 3D problems)
+    }
+  }
+
+verbose: True
+inference_mechanism: {
+  patch_overlap: 0,
+}
+modality: rad
+# Patch size during training - 2D patch for breast images since third dimension is not patched 
+patch_size: [64,64]
+# Number of epochs
+num_epochs: 1
+patience: 1 # the concept of patience is not used in GANs
+# Set the batch size
+batch_size: 128
+# Set the initial learning rate
+learning_rate_g: 0.0002 # generator learning rate
+learning_rate_d: 0.0002 # discriminator learning rate
+
+# Set the random seed which will be used to generate the latent vector in validation and testing passes
+random_seed_validation: 42
+
+save_output: True
+save_grid : True # when saving output, the generated images from validation and testing passes can be saved as one grid of images, only works for 2D
+save_training : False
+# Set schedulers, for GANs training no notion of plateau exists, therefore reduce_on_plateau is not allowed
+scheduler_d: triangle # the learning rate scheduler for the discriminator
+scheduler_g: triangle # the learning rate scheduler for the generator
+
+loss_function: ce # for GAN training, we must use the binary cross entropy loss 
+# Which optimizer do you want to use - adam/sgd
+optimizer_d: {type: adam, betas : [0.5, 0.999]} # the discriminator optimizer, betas as in the original DC-GAN paper
+optimizer_g: {type: adam, betas : [0.5, 0.999]} # the generator optimizer, betas as in the original DC-GAN paper
+
+# the value of 'k' for cross-validation, this is the percentage of total training data to use as validation;
+# randomized split is performed using sklearn's KFold method
+# for single fold run, use '-' before the fold number
+nested_training:
+  {
+    testing: -5, # this controls the holdout data splits for final model evaluation; use '1' if this is to be disabled
+    validation: -5 # this controls the validation data splits for model training
+  }
+# various data augmentation techniques
+# options: affine, elastic, downsample, motion, ghosting, bias, blur, gaussianNoise, swap
+# keep/edit as needed
+# all transforms: https://torchio.readthedocs.io/transforms/transforms.html?highlight=transforms
+data_augmentation:
+  {
+  # 'spatial':{
+  #   'probability': 0.5
+  # },
+  # 'kspace':{
+  #   'probability': 0.5
+  # },
+  # 'bias':{
+  #   'probability': 0.5
+  # },
+  # 'blur':{
+  #   'probability': 0.5
+  # },
+  # 'noise':{
+  #   'probability': 0.5
+  # },
+  # 'swap':{
+  #   'probability': 0.5
+  # }
+  }
+data_preprocessing:
+  {
+    # 'threshold':{
+    #   'min': 10, 
+    #   'max': 75
+    # },
+    # 'clip':{
+    #   'min': 10, 
+    #   'max': 75
+    # }, 
+    # 'normalize_standardize',
+    # 'resample':{
+    #   'resolution': [1,2,3]
+    # },
+    # 'resize': [64,64], # this is generally not recommended, as it changes image properties in unexpected ways
+  }
+
+# parallel training on HPC - here goes the command to prepend to send to a high performance computing
+# cluster for parallel computing during multi-fold training
+# not used for single fold training
+# this gets passed before the training_loop, so ensure enough memory is provided along with other parameters
+# that your HPC would expect
+# ${outputDir} will be changed to the outputDir you pass in CLI + '/${fold_number}'
+#parallel_compute_command: <insert parallel command here>
+
+q_max_length: 1
+
+q_samples_per_volume: 1
+
+q_num_workers: 0
+
+# Configuration of inference
+inference_config: {
+  n_generated_samples : 12, # total number of samples to generate 
+  batch_size: 6, # batch size for inference (how many images to generate at once)
+  save_format : "png" # manually say in which format to save the images, available options: png, nii.gz
+  }
+validation_config: {
+  n_generated_samples : 12, # total number of samples to generate
+  batch_size: 12, # batch size for validation (how many images to generate at once)
+  }
