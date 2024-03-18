@@ -151,8 +151,7 @@ def ImagesFromDataFrame(
             # if resize_image is requested, the perform per-image resize with appropriate interpolator
             if resize_images_flag:
                 img_resized = resize_image(
-                    subject_dict[str(channel)].as_sitk(),
-                    preprocessing["resize_image"],
+                    subject_dict[str(channel)].as_sitk(), preprocessing["resize_image"]
                 )
                 if parameters["memory_save_mode"]:
                     _save_resized_images(

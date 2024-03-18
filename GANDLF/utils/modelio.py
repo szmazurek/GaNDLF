@@ -18,10 +18,7 @@ model_dict_full = {
     "version": None,
 }
 
-model_dict_required = {
-    "model_state_dict": None,
-    "optimizer_state_dict": None,
-}
+model_dict_required = {"model_state_dict": None, "optimizer_state_dict": None}
 
 best_model_path_end = "_best.pth.tar"
 latest_model_path_end = "_latest.pth.tar"
@@ -29,10 +26,7 @@ initial_model_path_end = "_initial.pth.tar"
 
 
 def optimize_and_save_model(
-    model: torch.nn.Module,
-    params: dict,
-    path: str,
-    onnx_export: Optional[bool] = True,
+    model: torch.nn.Module, params: dict, path: str, onnx_export: Optional[bool] = True
 ) -> None:
     """
     Perform post-training optimization and save it to a file.
@@ -75,13 +69,7 @@ def optimize_and_save_model(
                 )
             else:
                 dummy_input = torch.randn(
-                    (
-                        1,
-                        num_channel,
-                        input_shape[0],
-                        input_shape[1],
-                        input_shape[2],
-                    )
+                    (1, num_channel, input_shape[0], input_shape[1], input_shape[2])
                 )
             # we need that for the synthesis models
             if params["problem_type"] == "synthesis":
@@ -127,12 +115,7 @@ def optimize_and_save_model(
                 if model_dimension == 2:
                     ov_model = convert_model(
                         onnx_path,
-                        input_shape=(
-                            1,
-                            num_channel,
-                            input_shape[0],
-                            input_shape[1],
-                        ),
+                        input_shape=(1, num_channel, input_shape[0], input_shape[1]),
                     )
                 else:
                     ov_model = convert_model(

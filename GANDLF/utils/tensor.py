@@ -418,17 +418,11 @@ def get_class_imbalance_weights(
                 from GANDLF.data.ImagesFromDataFrame import ImagesFromDataFrame
 
                 penalty_data = ImagesFromDataFrame(
-                    training_df,
-                    parameters=params,
-                    train=False,
-                    loader_type="penalty",
+                    training_df, parameters=params, train=False, loader_type="penalty"
                 )
 
                 penalty_loader = DataLoader(
-                    penalty_data,
-                    batch_size=1,
-                    shuffle=True,
-                    pin_memory=False,
+                    penalty_data, batch_size=1, shuffle=True, pin_memory=False
                 )
 
                 (
@@ -529,9 +523,7 @@ def get_ground_truths_and_predictions_tensor(
 
 
 def get_output_from_calculator(
-    prediction: torch.Tensor,
-    target: torch.tensor,
-    calculator: torchmetrics.Metric,
+    prediction: torch.Tensor, target: torch.tensor, calculator: torchmetrics.Metric
 ) -> float:
     """
     Helper function to get the output from a calculator.
