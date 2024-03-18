@@ -158,6 +158,6 @@ class LoggerGAN:
 
             for metric in epoch_metrics:
                 row += self._parse_input_value(epoch_metrics[metric]) + ","
-            row = row[:-1]  # ??
+            row = row[:-1]
             log_file.write(row)
             log_file.write("\n")

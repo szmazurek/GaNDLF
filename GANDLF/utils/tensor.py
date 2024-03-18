@@ -488,16 +488,8 @@ def print_model_summary(
 
         print("Model Summary:")
         print("\tInput size:", stats.to_megabytes(stats.total_input), "MB")
-        print(
-            "\tOutput size:",
-            stats.to_megabytes(stats.total_output_bytes),
-            "MB",
-        )
-        print(
-            "\tParameters size:",
-            stats.to_megabytes(stats.total_param_bytes),
-            "MB",
-        )
+        print("\tOutput size:", stats.to_megabytes(stats.total_output_bytes), "MB")
+        print("\tParameters size:", stats.to_megabytes(stats.total_param_bytes), "MB")
         print(
             "\tEstimated total size:",
             stats.to_megabytes(
