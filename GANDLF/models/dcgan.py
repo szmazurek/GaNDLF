@@ -23,8 +23,9 @@ class _GeneratorDCGAN(nn.Module):
     ) -> None:
         """
         Initializes a new instance of the _GneratorDCGAN class.
-        Parameters:
-        output_patch_size (Tuple[int, int,int]): The size of the output
+
+        Args:
+            output_patch_size (Tuple[int, int,int]): The size of the output
         patch.
             n_dimensions (int): The dimensionality of the input and output.
             latent_vector_dim (int): The dimension of the latent vector
@@ -109,10 +110,8 @@ class _GeneratorDCGAN(nn.Module):
                 bias=False,
             ),
         )
-        feature_extractor_output_size = (
-            self._get_output_size_feature_extractor(
-                self.feature_extractor, latent_vector_dim, n_dimensions
-            )
+        feature_extractor_output_size = self._get_output_size_feature_extractor(
+            self.feature_extractor, latent_vector_dim, n_dimensions
         )
         # if the output size of the feature extractor does not match
         # the output patch size, add an upsampling layer and a 1x1
@@ -135,9 +134,7 @@ class _GeneratorDCGAN(nn.Module):
             )
             self.feature_extractor.add_module(
                 "conv5",
-                conv(
-                    num_output_channels, num_output_channels, 1, 1, bias=False
-                ),
+                conv(num_output_channels, num_output_channels, 1, 1, bias=False),
             )
 
         self.feature_extractor.add_module("tanh", nn.Tanh())
@@ -147,13 +144,16 @@ class _GeneratorDCGAN(nn.Module):
         output_patch_size: Tuple[int, int, int],
         feature_extractor_output_size: Tuple[int, int, int],
     ) -> bool:
-        """Checks if the output patch size matches the output size of
+        """
+        Checks if the output patch size matches the output size of
         the feature extractor.
+
         Args:
             output_patch_size (Tuple[int, int, int]): The size of the
         output patch.
             feature_extractor_output_size (Tuple[int, int, int]): The
         output size of the feature extractor.
+
         Returns:
             bool: True if the output patch size matches the output size
         """
@@ -169,12 +169,15 @@ class _GeneratorDCGAN(nn.Module):
         latent_vector_dim: int,
         n_dimensions: int = 3,
     ) -> int:
-        """Determines the output size of the feature extractor to
+        """
+        Determines the output size of the feature extractor to
         initialize the classifier.
+
         Args:
             feature_extractor (nn.Module): The feature extractor module.
             latent_vector_dim (int): The dimension of the latent vector
         to be used as input to the generator.
+
         Returns:
             int: The output size of the feature extractor.
         """
@@ -188,9 +191,11 @@ class _GeneratorDCGAN(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the generator.
-        Parameters:
+
+        Args:
             x (torch.Tensor): The latent vector to be used as input to
         the generator.
+
         Returns:
             torch.Tensor: The generated image.
         """
@@ -214,7 +219,8 @@ class _DiscriminatorDCGAN(nn.Module):
     ) -> None:
         """
         Initializes a new instance of the _DiscriminatorDCGAN class.
-        Parameters:
+
+        Args:
             input_patch_size (Tuple[int, int,int]): The size of the
         input patch.
             n_dimensions (int): The dimensionality of the input.
@@ -313,9 +319,7 @@ class _DiscriminatorDCGAN(nn.Module):
             num_input_channels,
             n_dimensions,
         )
-        self.classifier.add_module(
-            "linear1", nn.Linear(num_output_features, 1)
-        )
+        self.classifier.add_module("linear1", nn.Linear(num_output_features, 1))
         self.classifier.add_module("sigmoid", nn.Sigmoid())
 
     @staticmethod
@@ -325,14 +329,17 @@ class _DiscriminatorDCGAN(nn.Module):
         n_channels: int = 1,
         n_dimensions: int = 3,
     ) -> int:
-        """Determines the output size of the feature extractor to
+        """
+        Determines the output size of the feature extractor to
         initialize the classifier.
+
         Args:
             feature_extractor (nn.Module): The feature extractor module.
             patch_size (Tuple[int, int,int]): The size of the input patch.
             n_channels (int): The number of input channels in the image
         to be discriminated.
             n_dimensions (int): The dimensionality of the input.
+
         Returns:
             int: The output size of the feature extractor.
         """
@@ -346,8 +353,10 @@ class _DiscriminatorDCGAN(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the discriminator.
-        Parameters:
+
+        Args:
             x (torch.Tensor): The image to be discriminated.
+
         Returns:
             torch.Tensor: The probability that the image is real.
         """
@@ -414,7 +423,8 @@ class DCGAN(ModelBase):
         """
         Initializes the weights of the generator. This is mimicking the
         original implementation of the DCGAN.
-        Parameters:
+
+        Args:
             generator (torch.nn.Module): The generator module.
         """
         for m in generator.modules():
@@ -430,7 +440,8 @@ class DCGAN(ModelBase):
         """
         Initializes the weights of the discriminator. This is mimicking the
         original implementation of the DCGAN.
-        Parameters:
+
+        Args:
             discriminator (torch.nn.Module): The discriminator module.
         """
         for m in discriminator.modules():
@@ -445,9 +456,11 @@ class DCGAN(ModelBase):
     def generator_forward(self, latent_vector: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the generator.
-        Parameters:
+
+        Args:
             latent_vector (torch.Tensor): The latent vector to be used as
         input to the generator.
+
         Returns:
             torch.Tensor: The generated image.
         """
@@ -456,8 +469,10 @@ class DCGAN(ModelBase):
     def discriminator_forward(self, image: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the discriminator.
-        Parameters:
+
+        Args:
             image (torch.Tensor): The image to be discriminated.
+
         Returns:
             torch.Tensor: The probability that the image is real.
         """
@@ -466,9 +481,11 @@ class DCGAN(ModelBase):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass, implemented simply as generator_forward.
-        Parameters:
+
+        Args:
             x (torch.Tensor): The latent vector to be used as input to
         the generator.
+
         Returns:
             torch.Tensor: The generated image.
         """
