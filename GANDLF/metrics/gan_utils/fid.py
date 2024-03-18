@@ -245,18 +245,6 @@ class FrechetInceptionDistance(Metric):
         alternatively we will pass through tensor of shape ``(1, 3, 299, 299)`` and dtype ``torch.uint8``` to the
         forward pass and expect a tensor of shape ``(1, num_features)`` as output.
 
-    Raises:
-        AssertionError:
-            If torch version is lower than 1.9
-        AssertionError:
-            If ``feature`` is set to an ``int`` (default settings) and ``torch-fidelity`` is not installed
-        AssertionError:
-            If ``feature`` is set to an ``int`` not in [64, 192, 768, 2048]
-        AssertionError:
-            If ``feature`` is not an ``str``, ``int`` or ``torch.nn.Module``
-        AssertionError:
-            If ``reset_real_features`` is not an ``bool``
-
     Example:
         >>> import torch
         >>> _ = torch.manual_seed(123)
@@ -438,55 +426,3 @@ class FrechetInceptionDistance(Metric):
         if isinstance(out.inception, NoTrainInceptionV3):
             out.inception._dtype = dst_type
         return out
-
-    def plot(
-        self,
-        val: Optional[Union[Tensor, Sequence[Tensor]]] = None,
-        ax: Optional[_AX_TYPE] = None,
-    ) -> _PLOT_OUT_TYPE:
-        """Plot a single or multiple values from the metric.
-
-        Args:
-            val: Either a single result from calling `metric.forward` or `metric.compute` or a list of these results.
-                If no value is provided, will automatically call `metric.compute` and plot that result.
-            ax: An matplotlib axis object. If provided will add plot to that axis
-
-        Returns:
-            Figure and Axes object
-
-        Raises:
-            ModuleNotFoundError:
-                If `matplotlib` is not installed
-
-        .. plot::
-            :scale: 75
-
-            >>> # Example plotting a single value
-            >>> import torch
-            >>> from torchmetrics.image.fid import FrechetInceptionDistance
-            >>> imgs_dist1 = torch.randint(0, 200, (100, 3, 299, 299), dtype=torch.uint8)
-            >>> imgs_dist2 = torch.randint(100, 255, (100, 3, 299, 299), dtype=torch.uint8)
-            >>> metric = FrechetInceptionDistance(feature=64)
-            >>> metric.update(imgs_dist1, real=True)
-            >>> metric.update(imgs_dist2, real=False)
-            >>> fig_, ax_ = metric.plot()
-
-        .. plot::
-            :scale: 75
-
-            >>> # Example plotting multiple values
-            >>> import torch
-            >>> from torchmetrics.image.fid import FrechetInceptionDistance
-            >>> imgs_dist1 = lambda: torch.randint(0, 200, (100, 3, 299, 299), dtype=torch.uint8)
-            >>> imgs_dist2 = lambda: torch.randint(100, 255, (100, 3, 299, 299), dtype=torch.uint8)
-            >>> metric = FrechetInceptionDistance(feature=64)
-            >>> values = [ ]
-            >>> for _ in range(3):
-            ...     metric.update(imgs_dist1(), real=True)
-            ...     metric.update(imgs_dist2(), real=False)
-            ...     values.append(metric.compute())
-            ...     metric.reset()
-            >>> fig_, ax_ = metric.plot(values)
-
-        """
-        return self._plot(val, ax)

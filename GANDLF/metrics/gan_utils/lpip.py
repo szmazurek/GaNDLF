@@ -96,50 +96,6 @@ class LPIPSGandlf(Metric):
         """Compute final perceptual similarity metric."""
         return lpips_compute(self.sum_scores, self.total, self.reduction)
 
-    def plot(
-        self,
-        val: Optional[Union[Tensor, Sequence[Tensor]]] = None,
-        ax: Optional[_AX_TYPE] = None,
-    ) -> _PLOT_OUT_TYPE:
-        """Plot a single or multiple values from the metric.
-
-        Args:
-            val: Either a single result from calling `metric.forward` or `metric.compute` or a list of these results.
-                If no value is provided, will automatically call `metric.compute` and plot that result.
-            ax: An matplotlib axis object. If provided will add plot to that axis
-
-        Returns:
-            Figure and Axes object
-
-        Raises:
-            ModuleNotFoundError:
-                If `matplotlib` is not installed
-
-        .. plot::
-            :scale: 75
-
-            >>> # Example plotting a single value
-            >>> import torch
-            >>> from GANDLF.metrics.gan_utils.lpip import LPIPSGandlf
-            >>> metric = LPIPSGandlf(n_dim=2, n_channels=3, net_type='squeeze')
-            >>> metric.update(torch.rand(10, 3, 100, 100), torch.rand(10, 3, 100, 100))
-            >>> fig_, ax_ = metric.plot()
-
-        .. plot::
-            :scale: 75
-
-            >>> # Example plotting multiple values
-            >>> import torch
-            >>> from GANDLF.metrics.gan_utils.lpip import LPIPSGandlf
-            >>> metric = LPIPSGandlf(n_dim=2, n_channels=3, net_type='squeeze')
-            >>> values = [ ]
-            >>> for _ in range(3):
-            ...     values.append(metric(torch.rand(10, 3, 100, 100), torch.rand(10, 3, 100, 100)))
-            >>> fig_, ax_ = metric.plot(values)
-
-        """
-        return self._plot(val, ax)
-
 
 if __name__ == "__main__":
     calc = LPIPSGandlf()

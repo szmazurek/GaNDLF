@@ -239,16 +239,26 @@ def _structural_similarity_index_measure(
     This function computes the SSIM between the generated images and the real
     images. Except for the params specified below, the rest of the params are
     default from torchmetrics. Works both for 2D and 3D images.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        params (dict): The parameter dictionary containing training and data
+        params (dict): The parameter dictionary containing training and data information.
+
     Returns:
         torch.Tensor: The SSIM score.
     """
 
     def _get_reduction(params: Dict[str, Any]) -> str:
-        """This function returns the reduction type from config."""
+        """
+        This function returns the reduction type from config.
+
+        Args:
+            params (dict): The parameter dictionary containing training and data information.
+
+        Returns:
+            str: The reduction type.
+        """
         # check if metrics have config
         if "metrics_config" in params:
             # check if ssim has config
@@ -278,14 +288,17 @@ def _ferechet_inception_distance(
     real_images: torch.Tensor,
     params: Dict[str, Any],
 ) -> torch.Tensor:
-    """This function computes the FID between the generated images and the
+    """
+    This function computes the FID between the generated images and the
     real images. Except for the params specified below, the rest of the params
     are default from torchmetrics.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        params (dict): The parameter dictionary containing training and data
-        Returns:
+        params (dict): The parameter dictionary containing training and data information.
+
+    Returns:
         torch.Tensor: The FID score.
     """
     assert (generated_images.dim() == 4) and (real_images.dim() == 4), (
@@ -295,7 +308,15 @@ def _ferechet_inception_distance(
     )
 
     def _get_features_size(params: Dict[str, Any]) -> int:
-        """This function returns the feature size for FID from config."""
+        """
+        This function returns the feature size for FID from config.
+
+        Args:
+            params (dict): The parameter dictionary containing training and data information.
+
+        Returns:
+            int: The feature size.
+        """
         # check if metrics have config
         if "metrics_config" in params:
             # check if fid has config
@@ -363,9 +384,11 @@ def _learned_perceptual_image_patch_similarity(
     real_images: torch.Tensor,
     params: Dict[str, Any],
 ) -> torch.Tensor:
-    """This function computes the LPIPS between the generated images and the
+    """
+    This function computes the LPIPS between the generated images and the
     real images. Except for the params specified below, the rest of the params
     are default from torchmetrics.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
@@ -377,12 +400,22 @@ def _learned_perceptual_image_patch_similarity(
     Defaults to "mean".
         converter_type (Literal["soft", "acs", "conv3d], optional): The converter
     type from ACS. Defaults to "soft".
+
     Returns:
         torch.Tensor: The LPIP score.
     """
 
     def _get_metric_params(params: Dict[str, Any]) -> Tuple[int, int, str, str, str]:
-        """This function returns the metric parameters from config."""
+        """
+        This function returns the metric parameters from config.
+
+        Args:
+            params (dict): The parameter dictionary containing training and data information.
+
+        Returns:
+            Tuple[int, int, str, str, str]: The metric parameters,
+        namely n_input_channels, n_dim, net_type, reduction, converter_type.
+        """
         n_input_channels = params["model"]["num_channels"]
         n_dim = params["model"]["dimension"]
         if "metrics_config" in params:
@@ -412,8 +445,16 @@ def _learned_perceptual_image_patch_similarity(
         return n_input_channels, n_dim, "squeeze", "mean", "soft"
 
     def _ensure_proper_scale_and_dtype(images: torch.Tensor) -> torch.Tensor:
-        """This function ensures that the input images are in the correct scale
-        and dtype for the metric calculation."""
+        """
+        This function ensures that the input images are in the correct scale
+        and dtype for the metric calculation.
+
+        Args:
+            images (torch.Tensor): The input images.
+
+        Returns:
+            torch.Tensor: The scaled and dtype corrected images.
+        """
         if images.dtype != torch.float32:
             images = images.float()
         # if images are in [-1, 1] range, scale to [0, 1]
@@ -473,13 +514,16 @@ def fid(
     real_images: torch.Tensor,
     params: Dict[str, Any],
 ) -> torch.Tensor:
-    """This function computes the FID between the generated images and the
+    """
+    This function computes the FID between the generated images and the
     real images. Except for the params specified below, the rest of the params
     are default from torchmetrics.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
         n_input_channels (int): The number of input channels.
+
     Returns:
         torch.Tensor: The FID score.
     """
@@ -491,13 +535,16 @@ def lpips(
     real_images: torch.Tensor,
     params: Dict[str, Any],
 ) -> torch.Tensor:
-    """This function computes the LPIPS between the generated images and the
+    """
+    This function computes the LPIPS between the generated images and the
     real images. Except for the params specified below, the rest of the params
     are default from torchmetrics.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        params (dict): The parameter dictionary containing training and data
+        params (dict): The parameter dictionary containing training and data information.
+
     Returns:
         torch.Tensor: The LPIP score.
     """
@@ -515,11 +562,12 @@ def ssim_gans(
     This function computes the SSIM between the generated images and the real
     images. Except for the params specified below, the rest of the params are
     default from torchmetrics.
+
     Args:
         generated_images (torch.Tensor): The generated images.
         real_images (torch.Tensor): The real images.
-        params (dict): The parameter dictionary containing training and data
-    information.
+        params (dict): The parameter dictionary containing training and data information.
+
     Returns:
         torch.Tensor: The SSIM score.
     """
