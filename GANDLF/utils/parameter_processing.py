@@ -61,6 +61,11 @@ def find_problem_type(parameters: dict, model_final_layer: str) -> str:
     Returns:
         str: The problem type (regression/classification/segmentation).
     """
+    # I do not know if this is correct way to incorporate that, but
+    # I did not manage to find any other way to determine if we
+    # are doing synthesis or not
+    if "problem_type" in parameters.keys():
+        return parameters["problem_type"]
     # check if regression/classification has been requested
     classification_phrases = [
         "classification_but_not_softmax",

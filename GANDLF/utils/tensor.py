@@ -84,7 +84,9 @@ def one_hot(
     return batch_stack
 
 
-def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], List[str]]) -> np.array:
+def reverse_one_hot(
+    predmask_tensor: torch.Tensor, class_list: Union[List[int], List[str]]
+) -> np.array:
     """
     This function creates a full segmentation mask Tensor from a one-hot-encoded mask and specified class list
 
@@ -101,7 +103,8 @@ def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], 
     for _class in class_list:
         for case in special_cases_to_check:
             if isinstance(_class, str):
-                if case in _class:  # check if any of the special cases are present
+                # check if any of the special cases are present
+                if case in _class:
                     special_case_detected = True
                     break
 
@@ -130,7 +133,10 @@ def reverse_one_hot(predmask_tensor: torch.Tensor, class_list: Union[List[int], 
 
 
 def send_model_to_device(
-    model: torch.nn.Module, amp: bool, device: str, optimizer: torch.optim
+    model: torch.nn.Module,
+    amp: bool,
+    device: str,
+    optimizers: List[torch.optim.Optimizer],
 ) -> Union[torch.nn.Module, bool, torch.device, int]:
     """
     This function reads the environment variable(s) and send model to correct device
@@ -139,7 +145,8 @@ def send_model_to_device(
         model (torch.nn.Module): The model that needs to be sent to specified device.
         amp (bool): Whether automatic mixed precision is to be used.
         device (str): Device type.
-        optimizer (torch.optim): The optimizer for training.
+        optimizers (List[torch.optim.Optimizer]): The optimizers to be sent to the specified device.
+
 
     Returns:
         torch.nn.Module: The model after it has been sent to specified device
@@ -203,9 +210,7 @@ def send_model_to_device(
                 torch.cuda.is_available(),
             )
         )
-
-        if not (optimizer is None):
-            # ensuring optimizer is in correct device - https://github.com/pytorch/pytorch/issues/8741
+        for optimizer in optimizers:
             optimizer.load_state_dict(optimizer.state_dict())
 
     else:
@@ -413,17 +418,11 @@ def get_class_imbalance_weights(
                 from GANDLF.data.ImagesFromDataFrame import ImagesFromDataFrame
 
                 penalty_data = ImagesFromDataFrame(
-                    training_df,
-                    parameters=params,
-                    train=False,
-                    loader_type="penalty",
+                    training_df, parameters=params, train=False, loader_type="penalty"
                 )
 
                 penalty_loader = DataLoader(
-                    penalty_data,
-                    batch_size=1,
-                    shuffle=True,
-                    pin_memory=False,
+                    penalty_data, batch_size=1, shuffle=True, pin_memory=False
                 )
 
                 (

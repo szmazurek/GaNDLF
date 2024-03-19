@@ -18,10 +18,7 @@ model_dict_full = {
     "version": None,
 }
 
-model_dict_required = {
-    "model_state_dict": None,
-    "optimizer_state_dict": None,
-}
+model_dict_required = {"model_state_dict": None, "optimizer_state_dict": None}
 
 best_model_path_end = "_best.pth.tar"
 latest_model_path_end = "_latest.pth.tar"
@@ -74,7 +71,13 @@ def optimize_and_save_model(
                 dummy_input = torch.randn(
                     (1, num_channel, input_shape[0], input_shape[1], input_shape[2])
                 )
-
+            # we need that for the synthesis models
+            if params["problem_type"] == "synthesis":
+                dummy_input = torch.randn(
+                    (1, params["model"]["latent_vector_size"], 1, 1)
+                )
+                if model_dimension == 3:
+                    dummy_input = dummy_input.unsqueeze(-1)
             # Export the model to ONNX format
             with torch.no_grad():
                 torch.onnx.export(
