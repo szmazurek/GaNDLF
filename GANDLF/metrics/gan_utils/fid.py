@@ -1,21 +1,15 @@
 from copy import deepcopy
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import torch
 from torch import Tensor
 from torch.nn import Module
 from torch.nn.functional import adaptive_avg_pool2d
-from acsconv.converters import (
-    ACSConverter,
-    Conv3dConverter,
-    SoftACSConverter,
-)
 from torchmetrics.metric import Metric
 from torchmetrics.utilities.imports import (
     _MATPLOTLIB_AVAILABLE,
     _TORCH_FIDELITY_AVAILABLE,
 )
-from torchmetrics.utilities.plot import _AX_TYPE, _PLOT_OUT_TYPE
 
 if not _MATPLOTLIB_AVAILABLE:
     __doctest_skip__ = ["FrechetInceptionDistance.plot"]
@@ -51,6 +45,14 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
         features_list: List[str],
         feature_extractor_weights_path: Optional[str] = None,
     ) -> None:
+        """
+        Initialize the module.
+
+        Args:
+            name (str): Name of the module.
+            features_list (List[str]): List of features to extract.
+            feature_extractor_weights_path (Optional[str]): Path to the weights file.
+        """
         assert _TORCH_FIDELITY_AVAILABLE, (
             "NoTrainInceptionV3 module requires that `Torch-fidelity` is installed."
             " Either install as `pip install torchmetrics[image]` or `pip install torch-fidelity`."
@@ -65,15 +67,19 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
         return super().train(False)
 
     def _torch_fidelity_forward(self, x: Tensor) -> Tuple[Tensor, ...]:
-        """Forward method of inception net.
-
+        """
+        Forward method of inception net.
         Copy of the forward method from this file:
         https://github.com/toshas/torch-fidelity/blob/master/torch_fidelity/feature_extractor_inceptionv3.py
         with a single line change regarding the casting of `x` in the beginning.
-
         Corresponding license file (Apache License, Version 2.0):
         https://github.com/toshas/torch-fidelity/blob/master/LICENSE.md
 
+        Args:
+            x (torch.Tensor): Input tensor of shape (N, 3, H, W)
+
+        Returns:
+            Tuple[torch.Tensor, ...]: Tuple of tensors with features extracted from the network.
         """
         vassert(
             torch.is_tensor(x) and x.dtype == torch.uint8,
@@ -160,7 +166,15 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
         return tuple(features[a] for a in self.features_list)
 
     def forward(self, x: Tensor) -> Tensor:
-        """Forward pass of neural network with reshaping of output."""
+        """
+        Forward pass of neural network with reshaping of output.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (N, 3, H, W)
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (N, d)
+        """
         out = self._torch_fidelity_forward(x)
         return out[0].reshape(x.shape[0], -1)
 
@@ -171,14 +185,13 @@ def _compute_fid(mu1: Tensor, sigma1: Tensor, mu2: Tensor, sigma2: Tensor) -> Te
     and X_y ~ N(mu_2, sigm_2) is d^2 = ||mu_1 - mu_2||^2 + Tr(sigm_1 + sigm_2 - 2*sqrt(sigm_1*sigm_2)).
 
     Args:
-        mu1: mean of activations calculated on predicted (x) samples
-        sigma1: covariance matrix over activations calculated on predicted (x) samples
-        mu2: mean of activations calculated on target (y) samples
-        sigma2: covariance matrix over activations calculated on target (y) samples
+        mu1 (torch.Tensor): Mean of the first Gaussian distribution.
+        sigma1 (torch.Tensor): Covariance matrix of the first Gaussian distribution.
+        mu2 (torch.Tensor): Mean of the second Gaussian distribution.
+        sigma2 (torch.Tensor): Covariance matrix of the second Gaussian distribution.
 
     Returns:
-        Scalar value of the distance between sets.
-
+        torch.Tensor: Frechet Inception Distance between the two distributions.
     """
     a = (mu1 - mu2).square().sum(dim=-1)
     b = sigma1.trace() + sigma2.trace()
@@ -282,6 +295,23 @@ class FrechetInceptionDistance(Metric):
         normalize: bool = False,
         **kwargs: Any,
     ) -> None:
+        """
+        Initialize Frechet Inception Distance metric.
+        
+        Args:
+            feature (Union[int, Module]): Either an integer or ``nn.Module``. If an
+        integer, it indicates the inceptionv3 feature layer to choose. Can be one of the following:
+        64, 192, 768, 2048. If an ``nn.Module``, it is a custom feature extractor. Expects that its forward
+        method returns an ``(N,d)`` matrix where ``N`` is the batch size and ``d`` is the feature size.
+            reset_real_features (bool): Whether to also reset the real features. Since in many cases the real dataset
+        does not change, the features can be cached them to avoid recomputing them which is costly. Set this to
+        ``False`` if your dataset does not change.
+            normalize (bool): Whether to normalize the input images to the feature extractor. If ``True`` images are
+        expected to be dtype ``float`` and have values in the ``[0,1]`` range, else if ``False`` images are expected to
+        have dtype ``uint8`` and take values in the ``[0, 255]`` range.
+            kwargs: Additional keyword arguments, see :ref:`Metric kwargs` for more info.
+        """
+
         super().__init__(**kwargs)
         assert isinstance(feature, (int, Module)), (
             "Argument `feature` expected to be an int or torch.nn.Module, but got"
@@ -355,7 +385,13 @@ class FrechetInceptionDistance(Metric):
         )
 
     def update(self, imgs: Tensor, real: bool) -> None:
-        """Update the state with extracted features."""
+        """
+        Update the state with extracted features.
+        
+        Args:
+            imgs (torch.Tensor): tensor with images feed to the feature extractor.
+            real (bool): bool indicating if ``imgs`` belong to the real or the fake distribution.
+        """
         imgs = (imgs * 255).byte() if self.normalize else imgs
         # assets that the input is a tensor of 2D images
         assert imgs.dim() == 4, f"Expected 4D input, got {imgs.dim()}D"
@@ -375,7 +411,12 @@ class FrechetInceptionDistance(Metric):
             self.fake_features_num_samples += imgs.shape[0]
 
     def compute(self) -> Tensor:
-        """Calculate FID score based on accumulated extracted features from the two distributions."""
+        """
+        Calculate FID score based on accumulated extracted features from the two distributions.
+        
+        Returns:
+            torch.Tensor: Frechet Inception Distance between the two distributions.
+        """
         assert (
             self.real_features_num_samples < 2 or self.fake_features_num_samples < 2
         ), "More than one sample is required for both the real and fake distributed to compute FID"
@@ -415,10 +456,14 @@ class FrechetInceptionDistance(Metric):
             super().reset()
 
     def set_dtype(self, dst_type: Union[str, torch.dtype]) -> "Metric":
-        """Transfer all metric state to specific dtype. Special version of standard `type` method.
+        """
+        Transfer all metric state to specific dtype. Special version of standard `type` method.
 
-        Arguments:
-            dst_type: the desired type as ``torch.dtype`` or string
+        Args:
+            dst_type (Union[str, torch.dtype]): The desired dtype of the metric state.
+
+        Returns:
+            Metric: The metric with the desired dtype.
 
         """
         out = super().set_dtype(dst_type)

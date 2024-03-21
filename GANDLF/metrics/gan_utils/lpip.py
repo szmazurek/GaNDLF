@@ -1,8 +1,7 @@
-from typing import Any, ClassVar, List, Optional, Sequence, Union
+from typing import Any, ClassVar, List
 from typing_extensions import Literal
 import torch
 from torch import Tensor
-from torchmetrics.utilities.plot import _AX_TYPE, _PLOT_OUT_TYPE
 from torchmetrics.metric import Metric
 
 from .functional import (
@@ -39,19 +38,22 @@ class LPIPSGandlf(Metric):
         converter_type: Literal["soft", "acs", "conv3d"] = "soft",
         **kwargs: Any,
     ):
-        """Initialize the LPIPS metric for GanDLF. This metric is based on the
+        """
+        Initialize the LPIPS metric for GanDLF. This metric is based on the
         torchmetrics implementation of LPIPS, with modifications to allow usage
         of single channel data and 3D data. Note that it uses the pre-trained
         model from the torchmetrics implementation, originally designed
         for 3-channel 2D data. Here the layers are modified, so results need
         to be interpreted with caution. For 2D 3-channel data, the results
         are expected to be similar to the original implementation.
+
         Args:
-            net_type (Literal["vgg", "alex", "squeeze"]): The network type.
-            reduction (Literal["sum", "mean"]): The reduction type, one of 'mean' or 'sum'
-            normalize (bool): Whether to normalize the input images.
-            n_dim (int): The number of dimensions of the input images.
-            n_channels (int): The number of channels of the input images.
+            net_type (Literal["vgg", "alex", "squeeze"]): The network type. Defaults to 'alex'.
+            reduction (Literal["sum", "mean"]): The reduction type, one of 'mean' or 'sum'.
+        Defaults to 'mean'.
+            normalize (bool): Whether to normalize the input images. Defaults to False.
+            n_dim (int): The number of dimensions of the input images. Defaults to 2.
+            n_channels (int): The number of channels of the input images. Defaults to 1.
             converter_type (Literal["soft","acs", "conv3d]: The converter type
         from ACS, one of 'soft','acs' or 'conv3d'. Defaults to 'soft'.
             **kwargs: Additional arguments for the metric.
@@ -87,13 +89,24 @@ class LPIPSGandlf(Metric):
             converter(self.net)
 
     def update(self, img1: Tensor, img2: Tensor) -> None:
-        """Update internal states with lpips score."""
+        """
+        Update internal states with lpips score.
+        
+        Args:
+            img1 (torch.Tensor): The first image tensor.
+            img2 (torch.Tensor): The second image tensor.
+        """
         loss, total = lpips_update(img1, img2, net=self.net, normalize=self.normalize)
         self.sum_scores += loss.sum()
         self.total += total
 
     def compute(self) -> Tensor:
-        """Compute final perceptual similarity metric."""
+        """
+        Compute final perceptual similarity metric.
+        
+        Returns:
+            torch.Tensor: The LPIPS score.
+        """
         return lpips_compute(self.sum_scores, self.total, self.reduction)
 
 

@@ -19,7 +19,17 @@ from acsconv.converters import (
 
 
 def _spatial_average(in_tens: Tensor, n_dims: int, keep_dim: bool = True) -> Tensor:
-    """Spatial averaging over height and width of images."""
+    """
+    Spatial averaging over height and width of images.
+    
+    Args:
+        in_tens (torch.Tensor): input tensor
+        n_dims (int): number of dimensions
+        keep_dim (bool, optional): whether to keep the dimensions. Defaults to True.
+    
+    Returns:
+        torch.Tensor: spatially averaged tensor
+    """
 
     if n_dims == 3:
         return in_tens.mean([2, 3, 4], keepdim=keep_dim)
@@ -27,18 +37,45 @@ def _spatial_average(in_tens: Tensor, n_dims: int, keep_dim: bool = True) -> Ten
 
 
 def _upsample(in_tens: Tensor, out_hw: Tuple[int, ...] = (64, 64)) -> Tensor:
-    """Upsample input with bilinear interpolation."""
+    """
+    Upsample input with bilinear interpolation.
+
+    Args:
+        in_tens (torch.Tensor): input tensor
+        out_hw (Tuple[int, ...], optional): output size. Defaults to (64, 64).
+
+    Returns:
+        torch.Tensor: upsampled tensor
+    """
     return nn.Upsample(size=out_hw, mode="bilinear", align_corners=False)(in_tens)
 
 
 def _normalize_tensor(in_feat: Tensor, eps: float = 1e-8) -> Tensor:
-    """Normalize input tensor."""
+    """
+    Normalize input tensor.
+
+    Args:
+        in_feat (torch.Tensor): input tensor
+        eps (float, optional): epsilon. Defaults to 1e-8.
+
+    Returns:
+        torch.Tensor: normalized tensor
+    """
     norm_factor = torch.sqrt(eps + torch.sum(in_feat**2, dim=1, keepdim=True))
     return in_feat / norm_factor
 
 
 def _resize_tensor(x: Tensor, size: int = 64) -> Tensor:
-    """https://github.com/toshas/torch-fidelity/blob/master/torch_fidelity/sample_similarity_lpips.py#L127C22-L132."""
+    """
+    Resize input tensor.
+
+    Args:
+        x (torch.Tensor): input tensor
+        size (int, optional): size of the output. Defaults to 64.
+    
+    Returns:
+        torch.Tensor: resized tensor
+    """
     if x.shape[-1] > size and x.shape[-2] > size:
         return torch.nn.functional.interpolate(x, (size, size), mode="area")
     return torch.nn.functional.interpolate(
@@ -61,6 +98,22 @@ class _LPIPSGandlf(nn.Module):
         resize: Optional[int] = None,
         **kwargs,
     ):
+        """
+        An implementation of the LPIPS metric from torchmetrics to handle both 2D and 3D images
+        in GANDLF.
+
+        Args:
+            n_dim (int, optional): number of dimensions. Defaults to 2.
+            pretrained (bool, optional): whether to use pretrained weights. Defaults to True.
+            net (Literal["alex", "vgg", "squeeze"], optional): network type. Defaults to "alex".
+            spatial (bool, optional): whether to use spatial. Defaults to False.
+            pnet_rand (bool, optional): whether to use random weights. Defaults to False.
+            pnet_tune (bool, optional): whether to tune the network. Defaults to False.
+            use_dropout (bool, optional): whether to use dropout. Defaults to True.
+            model_path (Optional[str], optional): path to the model. Defaults to None.
+            eval_mode (bool, optional): whether to use evaluation mode. Defaults to True.
+            resize (Optional[int], optional): resize the input. Defaults to None.
+        """
         super().__init__()
         self.pnet_type = net
         self.pnet_tune = pnet_tune
@@ -116,6 +169,20 @@ class _LPIPSGandlf(nn.Module):
         retperlayer: bool = False,
         normalize: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
+        
+        """
+        Forward pass of the network.
+
+        Args:
+            in0 (torch.Tensor): input tensor
+            in1 (torch.Tensor): input tensor
+            retperlayer (bool, optional): whether to return per layer. Defaults to False.
+            normalize (bool, optional): whether to normalize the input. Defaults to False.
+
+        Returns:
+            Union[torch.Tensor, Tuple[torch.Tensor, List[torch.Tensor]]]: loss value or loss value and per layer loss values
+        """
+
         if (
             normalize
         ):  # turn on this flag if input is [0,1] so it can be adjusted to [-1, +1]
@@ -163,8 +230,10 @@ class _LPIPSGandlf(nn.Module):
 
 
 class _NoTrainLpipsLPIPSGandlf(_LPIPSGandlf):
-    """A wrapper that implements the LPIPS metric from torchmetrics to
-    handle both 2D and 3D images, single and multi-channel images."""
+    """
+    A wrapper that implements the LPIPS metric from torchmetrics to
+    handle both 2D and 3D images, single and multi-channel images.
+    """
 
     def train(self, mode: bool) -> "_NoTrainLpipsLPIPSGandlf":  # type: ignore[override]
         """Force network to always be in evaluation mode."""
@@ -172,12 +241,15 @@ class _NoTrainLpipsLPIPSGandlf(_LPIPSGandlf):
 
 
 def _valid_img(img: Tensor, normalize: bool) -> bool:
-    """Check if input is valid.
+    """
+    Check if input is valid.
+    
     Args:
-        img: input image
-        normalize: whether to normalize the image
+        img (torch.Tensor): input tensor
+        normalize (bool): whether to normalize the input
+
     Returns:
-        bool: whether input is valid
+        bool: whether the input is valid
     """
     value_check = (
         img.max() <= 1.0 and img.min() >= 0.0 if normalize else img.min() >= -1
@@ -188,14 +260,17 @@ def _valid_img(img: Tensor, normalize: bool) -> bool:
 def lpips_update(
     img1: Tensor, img2: Tensor, net: nn.Module, normalize: bool
 ) -> Tuple[Tensor, Union[int, Tensor]]:
-    """Update internal states with lpips score.
+    """
+    Update internal states with lpips score.
+    
     Args:
-        img1: first set of images
-        img2: second set of images
-        net: network
-        normalize: whether the network expects input to be normalized
+        img1 (torch.Tensor): input tensor
+        img2 (torch.Tensor): input tensor
+        net (torch.nn.Module): network
+        normalize (bool): whether to normalize the input
+    
     Returns:
-        Tuple[Tensor, Union[int, Tensor]]: loss and total number of images
+        Tuple[torch.Tensor, Union[int, torch.Tensor]]: loss value and total number of images
 
     """
     assert _valid_img(img1, normalize) and _valid_img(img2, normalize), (
@@ -216,13 +291,16 @@ def lpips_compute(
     total: Union[Tensor, int],
     reduction: Literal["sum", "mean"] = "mean",
 ) -> Tensor:
-    """Compute the final LPIPS score.
+    """
+    Compute the final LPIPS score.
+    
     Args:
-        sum_scores: sum of all scores
-        total: total number of images
-        reduction: reduction type, one of 'mean' or 'sum'. Defaults to 'mean'.
+        sum_scores (torch.Tensor): sum of the scores
+        total (Union[torch.Tensor, int]): total number of images
+        reduction (Literal["sum", "mean"], optional): reduction method. Defaults to "mean".
+    
     Returns:
-        Tensor: final LPIPS score
+        torch.Tensor: final LPIPS score
     """
     return sum_scores / total if reduction == "mean" else sum_scores
 
@@ -230,15 +308,17 @@ def lpips_compute(
 def determine_converter(
     converter_type: Literal["soft", "acs", "conv3d"] = "soft",
 ) -> Union[SoftACSConverter, ACSConverter, Conv3dConverter]:
-    """Determine the converter type to use for 2D to 3D conversion.
+    """
+    Determine the converter type to use for 2D to 3D conversion.
+    
     Args:
-        converter_type: str indicating the type of converter to use for
-    converting the net into a 3D network if the input is 5D. Choose
-    between `'soft'`, `'asc'` or `'conv3d'`. If ``None`` will use
+        converter_type (Literal["soft", "acs", "conv3d"], optional): str indicating 
+    the type of converter to use for converting the net into a 3D network if the 
+    input is 5D. Choose between `'soft'`, `'asc'` or `'conv3d'`. If ``None`` will use
     `'soft'` by default.
+
     Returns:
-        Union[None, SoftACSConverter, ACSConverter, Conv3dConverter]: the
-    converter to use.
+        Union[None, SoftACSConverter, ACSConverter, Conv3dConverter]: the converter to use.
     """
     assert converter_type in ["soft", "acs", "conv3d", None], (
         f"Expected converter_type to be one of 'soft', 'acs', 'conv3d' or None."
@@ -258,11 +338,14 @@ def modify_net_input(
     net_type: Literal["alex", "vgg", "squeeze"],
     n_channels: int,
 ) -> None:
-    """Modify the input layer of the network to accept the correct number
+    """ 
+    Modify the input layer of the network to accept the correct number
     of channels.
+
     Args:
         net: network
-        net_type: network type
+        net_type: str indicating backbone network type to use. Choose
+    `'squeeze'`, not implemented for `alex` or `vgg`.
         n_channels: number of channels
     """
     if net_type == "squeeze":
@@ -291,10 +374,12 @@ def modify_net_input(
 
 
 def modify_scaling_layer(net: nn.Module) -> None:
-    """Modify the scaling layer of the network to Identity for
+    """
+    Modify the scaling layer of the network to Identity for
     cases other than 2D 3-channel images.
+    
     Args:
-        net: network
+        net (torch.nn.Module): network
     """
     if isinstance(net.scaling_layer, ScalingLayer):
         net.scaling_layer = nn.Identity()
@@ -310,31 +395,33 @@ def learned_perceptual_image_patch_similarity(
     n_channels: int = 1,
     converter_type: Literal["soft", "acs", "conv3d"] = "soft",
 ) -> Tensor:
-    """Functional Interface for The Learned Perceptual Image Patch Similarity
+    """
+    Functional Interface for The Learned Perceptual Image Patch Similarity
     (`LPIPS_`) calculates perceptual similarity between two images.
-
     LPIPS essentially computes the similarity between the activations of
     two image patches for some pre-defined network. This measure has been
     shown to match human perception well. A low LPIPS score means that
     image patches are perceptual similar.
-
     Both input image patches are expected to have shape ``(N, C, H, W)``
-    or ``(N, C, D, H, W)``.
-    The minimum size of `H, W` depends on the chosen backbone (see `net_type` arg).
+    or ``(N, C, D, H, W)``. The minimum size of `H, W` depends on the chosen 
+    backbone (see `net_type` arg).
 
     Args:
-        img1: first set of images
-        img2: second set of images
-        net_type: str indicating backbone network type to use. Choose
-    `'squeeze'`, not implemented for `alex` or `vgg`.
-        reduction: str indicating how to reduce over the batch dimension.
-     Choose between `'sum'` or `'mean'`.
-        normalize: by default this is ``False`` meaning that the input is
+        img1 (torch.Tensor): first set of images
+        img2 (torch.Tensor): second set of images
+        net_type (str, optional): backbone network type to use. Choose
+    between `'alex'`, `'vgg'`, `'squeeze'`. Defaults to `'alex'`.
+        reduction (str, optional): Specifies the reduction to apply to the
+    output. Choose between `'sum'`, `'mean'`. Defaults to `'mean'`.
+        normalize (bool, optional): by default this is ``False`` meaning that the input is
     expected to be in the [-1,1] range. If set to ``True`` will instead
     expect input to be in the ``[0,1]`` range.
-        converter_type: str indicating the type of converter to use for
-    converting the net into a 3D network if the input is 5D. Choose
-    between `'soft'`, `'acs'`, `'conv3d'`.  Will use `'soft'` by default.
+        converter_type (str, optional): string indicating the type of converter to use for
+    converting the net into a 3D network if the input is 5D. Choose between `'soft'`, `'acs'`, `'conv3d'`. 
+    Will use `'soft'` by default.
+    
+    Returns:
+        torch.Tensor: The LPIPS score
 
     Example:
         >>> import torch
