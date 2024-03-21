@@ -30,10 +30,7 @@ else:
     vassert = None
     interpolate_bilinear_2d_like_tensorflow1x = None
 
-    __doctest_skip__ = [
-        "FrechetInceptionDistance",
-        "FrechetInceptionDistance.plot",
-    ]
+    __doctest_skip__ = ["FrechetInceptionDistance", "FrechetInceptionDistance.plot"]
 
 
 class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
@@ -90,9 +87,7 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
 
         x = x.to(self._dtype) if hasattr(self, "_dtype") else x.to(torch.float)
         x = interpolate_bilinear_2d_like_tensorflow1x(
-            x,
-            size=(self.INPUT_IMAGE_SIZE, self.INPUT_IMAGE_SIZE),
-            align_corners=False,
+            x, size=(self.INPUT_IMAGE_SIZE, self.INPUT_IMAGE_SIZE), align_corners=False
         )
         x = (x - 128) / 128
 
@@ -168,10 +163,10 @@ class NoTrainInceptionV3(_FeatureExtractorInceptionV3):
     def forward(self, x: Tensor) -> Tensor:
         """
         Forward pass of neural network with reshaping of output.
-        
+
         Args:
             x (torch.Tensor): Input tensor of shape (N, 3, H, W)
-        
+
         Returns:
             torch.Tensor: Output tensor of shape (N, d)
         """
@@ -297,7 +292,7 @@ class FrechetInceptionDistance(Metric):
     ) -> None:
         """
         Initialize Frechet Inception Distance metric.
-        
+
         Args:
             feature (Union[int, Module]): Either an integer or ``nn.Module``. If an
         integer, it indicates the inceptionv3 feature layer to choose. Can be one of the following:
@@ -363,9 +358,7 @@ class FrechetInceptionDistance(Metric):
             dist_reduce_fx="sum",
         )
         self.add_state(
-            "real_features_num_samples",
-            torch.tensor(0).long(),
-            dist_reduce_fx="sum",
+            "real_features_num_samples", torch.tensor(0).long(), dist_reduce_fx="sum"
         )
 
         self.add_state(
@@ -379,15 +372,13 @@ class FrechetInceptionDistance(Metric):
             dist_reduce_fx="sum",
         )
         self.add_state(
-            "fake_features_num_samples",
-            torch.tensor(0).long(),
-            dist_reduce_fx="sum",
+            "fake_features_num_samples", torch.tensor(0).long(), dist_reduce_fx="sum"
         )
 
     def update(self, imgs: Tensor, real: bool) -> None:
         """
         Update the state with extracted features.
-        
+
         Args:
             imgs (torch.Tensor): tensor with images feed to the feature extractor.
             real (bool): bool indicating if ``imgs`` belong to the real or the fake distribution.
@@ -413,7 +404,7 @@ class FrechetInceptionDistance(Metric):
     def compute(self) -> Tensor:
         """
         Calculate FID score based on accumulated extracted features from the two distributions.
-        
+
         Returns:
             torch.Tensor: Frechet Inception Distance between the two distributions.
         """

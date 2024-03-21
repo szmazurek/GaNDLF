@@ -91,7 +91,7 @@ class LPIPSGandlf(Metric):
     def update(self, img1: Tensor, img2: Tensor) -> None:
         """
         Update internal states with lpips score.
-        
+
         Args:
             img1 (torch.Tensor): The first image tensor.
             img2 (torch.Tensor): The second image tensor.
@@ -103,7 +103,7 @@ class LPIPSGandlf(Metric):
     def compute(self) -> Tensor:
         """
         Compute final perceptual similarity metric.
-        
+
         Returns:
             torch.Tensor: The LPIPS score.
         """
