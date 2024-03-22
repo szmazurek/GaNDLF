@@ -154,8 +154,7 @@ def create_pytorch_objects_gan(
         model,
         amp=parameters["model"]["amp"],
         device=device,
-        optimizer_1=optimizer_gen,
-        optimizer_2=optimizer_disc,
+        optimizers=[optimizer_gen, optimizer_disc],
     )
     if train_csv is not None:
         if not ("step_size" in parameters["scheduler_g"]):
@@ -171,12 +170,14 @@ def create_pytorch_objects_gan(
 
         # Calculate the weights here
         (
-            parameters["weights"],
+            parameters["penalty_weights"],
+            parameters["sampling_weights"],
             parameters["class_weights"],
         ) = get_class_imbalance_weights(parameters["training_data"], parameters)
 
-        print("Class weights  : ", parameters["class_weights"])
-        print("Penalty weights: ", parameters["weights"])
+        print("Penalty weights : ", parameters["penalty_weights"])
+        print("Sampling weights: ", parameters["sampling_weights"])
+        print("Class weights   : ", parameters["class_weights"])
 
     else:
         scheduler_gen, scheduler_disc = None, None
