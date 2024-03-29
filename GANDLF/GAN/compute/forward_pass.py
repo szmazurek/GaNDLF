@@ -340,7 +340,7 @@ def validate_network_gan(
                 current_output_dir,
                 "testing",
                 subject["subject_id"][0],
-                subject["subject_id"][0] + f"array" + ext,
+                subject["subject_id"][0] + f"array.png",
             )
 
             vutils.save_image(
