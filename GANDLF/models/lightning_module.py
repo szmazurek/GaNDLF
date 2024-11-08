@@ -16,9 +16,6 @@ class GandlfLightningModule(pl.LightningModule):
         self.params = params
         self.loss = LossCalculatorFactory(params).get_loss_calculator()
 
-    def _initialize_model(self):
-        self.model = get_model(self.params)
-
     def configure_optimizers(self):
         params = deepcopy(self.params)
         params["model_parameters"] = self.model.parameters()
