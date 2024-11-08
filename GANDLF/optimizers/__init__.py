@@ -46,12 +46,9 @@ def get_optimizer(params):
         optimizer (torch.optim.Optimizer): An instance of the specified optimizer.
 
     """
-    # Retrieve the optimizer type from the input parameters
-    optimizer_type = params["optimizer"]["type"]
 
-    # Create the optimizer instance using the specified type and input parameters
-    if optimizer_type in global_optimizer_dict:
-        optimizer_function = global_optimizer_dict[optimizer_type]
-        return optimizer_function(params)
-    else:
-        raise ValueError("Optimizer type %s not found" % optimizer_type)
+    chosen_optimizer = params["optimizer"]["type"]
+    assert (
+        chosen_optimizer in global_optimizer_dict
+    ), f"Could not find the requested optimizer '{params['optimizer']['type']}'"
+    return global_optimizer_dict[chosen_optimizer](params)
