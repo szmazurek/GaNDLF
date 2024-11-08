@@ -38,3 +38,20 @@ global_losses_dict = {
     "focal": FocalLoss,
     "dc_focal": DC_Focal,
 }
+
+
+def get_loss(params):
+    """
+    Function to get the loss definition.
+
+    Args:
+        params (dict): The parameters' dictionary.
+
+    Returns:
+        loss (object): The loss definition.
+    """
+    chosen_loss = params["loss_function"].lower()
+    assert (
+        chosen_loss in global_losses_dict
+    ), f"Could not find the requested loss function '{params['loss_function']}'"
+    return global_losses_dict[chosen_loss]
