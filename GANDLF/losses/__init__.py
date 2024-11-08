@@ -54,4 +54,7 @@ def get_loss(params):
     assert (
         chosen_loss in global_losses_dict
     ), f"Could not find the requested loss function '{params['loss_function']}'"
+    # TODO This check looks like legacy code, should we have it?
+    if isinstance(params["loss_function"], dict):
+        return global_losses_dict[list(params["loss_function"].keys())[0]]
     return global_losses_dict[chosen_loss]
