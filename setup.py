@@ -38,6 +38,7 @@ toplevel_package_excludes = ["testing*"]
 black_version = "23.11.0"
 requirements = [
     "torch==2.3.1",
+    "lightning==2.4.0",
     f"black=={black_version}",
     "numpy==1.25.0",
     "scipy",
