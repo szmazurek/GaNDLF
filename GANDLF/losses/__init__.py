@@ -50,11 +50,14 @@ def get_loss(params):
     Returns:
         loss (object): The loss definition.
     """
-    chosen_loss = params["loss_function"].lower()
+    # TODO This check looks like legacy code, should we have it?
+
+    if isinstance(params["loss_function"], dict):
+        chosen_loss = list(params["loss_function"].keys())[0].lower()
+    else:
+        chosen_loss = params["loss_function"].lower()
     assert (
         chosen_loss in global_losses_dict
     ), f"Could not find the requested loss function '{params['loss_function']}'"
-    # TODO This check looks like legacy code, should we have it?
-    if isinstance(params["loss_function"], dict):
-        return global_losses_dict[list(params["loss_function"].keys())[0]]
+
     return global_losses_dict[chosen_loss]

@@ -44,4 +44,4 @@ def get_scheduler(params):
     assert (
         chosen_scheduler in global_schedulers_dict
     ), f"Could not find the requested scheduler '{params['scheduler']['type']}'"
-    return global_schedulers_dict[params[chosen_scheduler]](params)
+    return global_schedulers_dict[chosen_scheduler](params)

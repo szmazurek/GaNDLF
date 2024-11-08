@@ -120,7 +120,7 @@ def get_model(params):
     Returns:
         model (torch.nn.Module): The model definition.
     """
-    chosen_model = params["model"]["architecture"]
+    chosen_model = params["model"]["architecture"].lower()
     assert (
         chosen_model in global_models_dict
     ), f"Could not find the requested model '{params['model']['architecture']}'"
