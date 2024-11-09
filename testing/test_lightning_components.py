@@ -1,3 +1,4 @@
+import os
 import yaml
 import torch
 import math
@@ -23,6 +24,8 @@ from GANDLF.parseConfig import parseConfig
 from GANDLF.utils.write_parse import parseTrainingCSV
 from GANDLF.utils import populate_header_in_parameters
 
+testingDir = Path(__file__).parent.absolute().__str__()
+
 
 def add_mock_config_params(config):
     config["penalty_weights"] = [0.5, 0.25, 0.175, 0.075]
@@ -30,11 +33,9 @@ def add_mock_config_params(config):
 
 
 def read_config():
-    config_path = Path(
-        "/net/tscratch/people/plgmazurekagh/lightning_port_gandlf/GaNDLF/testing/config_segmentation.yaml"
-    )
-    csv_path = "/net/tscratch/people/plgmazurekagh/lightning_port_gandlf/GaNDLF/testing/data/train_2d_rad_segmentation.csv"
+    config_path = Path(os.path.join(testingDir, "config_segmentation.yaml"))
 
+    csv_path = os.path.join(testingDir, "data/train_2d_rad_segmentation.csv")
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
     parsed_config = parseConfig(config)
