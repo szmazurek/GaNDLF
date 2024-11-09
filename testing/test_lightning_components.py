@@ -1,5 +1,6 @@
 import yaml
 import torch
+import math
 import pytest
 from pathlib import Path
 from GANDLF.models.lightning_module import GandlfLightningModule
@@ -25,6 +26,7 @@ from GANDLF.utils import populate_header_in_parameters
 
 def add_mock_config_params(config):
     config["penalty_weights"] = [0.5, 0.25, 0.175, 0.075]
+    config["model"]["class_list"] = [0, 1, 2, 3]
 
 
 def read_config():
@@ -132,11 +134,11 @@ def test_port_metric_calculator_simple():
     config = read_config()
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
     assert isinstance(metric_calculator, MetricCalculatorSimple)
-
-    dummy_preds = torch.rand(4, 4, 4, 4)
-    dummy_target = torch.rand(4, 4, 4, 4)
+    dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
+    dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
     metric = metric_calculator(dummy_preds, dummy_target)
-    assert not torch.isnan(metric).any()
+    for metric, value in metric.items():
+        assert not math.isnan(value), f"Metric {metric} has NaN values"
 
 
 def test_port_metric_calculator_sdnet():
@@ -145,10 +147,11 @@ def test_port_metric_calculator_sdnet():
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
     assert isinstance(metric_calculator, MetricCalculatorStdnet)
 
-    dummy_preds = torch.rand(4, 4, 4, 4)
-    dummy_target = torch.rand(4, 4, 4, 4)
+    dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
+    dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
     metric = metric_calculator(dummy_preds, dummy_target)
-    assert not torch.isnan(metric).any()
+    for metric, value in metric.items():
+        assert not math.isnan(value), f"Metric {metric} has NaN values"
 
 
 @pytest.mark.skip(
@@ -160,10 +163,11 @@ def test_port_metric_calculator_deep_supervision():
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
     assert isinstance(metric_calculator, MetricCalculatorDeepSupervision)
 
-    dummy_preds = torch.rand(4, 4, 4, 4)
-    dummy_target = torch.rand(4, 4, 4, 4)
+    dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
+    dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
     metric = metric_calculator(dummy_preds, dummy_target)
-    assert not torch.isnan(metric).any()
+    for metric, value in metric.items():
+        assert not math.isnan(value), f"Metric {metric} has NaN values"
 
 
 #### LIGHTNING MODULE ####

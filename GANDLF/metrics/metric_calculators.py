@@ -38,6 +38,7 @@ class MetricCalculatorStdnet(AbstractMetricCalculator):
                 metric_calculator(prediction, target, self.params).detach().cpu()
             )
             metric_results[metric_name] = self._process_metric_value(metric_value)
+        return metric_results
 
 
 class MetricCalculatorDeepSupervision(AbstractMetricCalculator):
