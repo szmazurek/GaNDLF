@@ -1,4 +1,3 @@
-import torch
 import lightning.pytorch as pl
 from GANDLF.models import get_model
 from GANDLF.optimizers import get_optimizer
@@ -12,8 +11,8 @@ from copy import deepcopy
 class GandlfLightningModule(pl.LightningModule):
     def __init__(self, params: dict):
         super().__init__()
+        self.params = deepcopy(params)
         self.model: ModelBase = get_model(params)
-        self.params = params
         self.loss = LossCalculatorFactory(params).get_loss_calculator()
 
     def configure_optimizers(self):
