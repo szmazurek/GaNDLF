@@ -1,7 +1,5 @@
 import torch
-import torch.nn.functional as F
 from GANDLF.losses import get_loss
-from GANDLF.utils.tensor import reverse_one_hot, get_linear_interpolation_mode
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -54,36 +52,15 @@ class LossCalculatorDeepSupervision(AbstractLossCalculator):
     ) -> torch.Tensor:
         if len(prediction) > 1:
             loss = torch.tensor(0.0, requires_grad=True)
-            ground_truth_resampled = self._resample_ground_truth(target, prediction)
             for i in range(len(prediction)):
                 loss += (
-                    self.loss(prediction[i], ground_truth_resampled[i], self.params)
+                    self.loss(prediction[i], target[i], self.params)
                     * self.loss_weights[i]
                 )
         else:
             loss = self.loss(prediction, target, self.params)
 
         return loss
-
-    def _resample_ground_truth(
-        self, target: torch.Tensor, prediction: torch.Tensor
-    ) -> List[torch.Tensor]:
-        ground_truth_resampled = []
-        ground_truth_prev = target.detach()
-        for i, _ in enumerate(prediction):
-            if ground_truth_prev[0].shape != prediction[i][0].shape:
-                expected_shape = reverse_one_hot(
-                    prediction[i][0].detach(), self.params["model"]["class_list"]
-                ).shape
-                ground_truth_prev = F.interpolate(
-                    ground_truth_prev,
-                    size=expected_shape,
-                    mode=get_linear_interpolation_mode(len(expected_shape)),
-                    align_corners=False,
-                )
-            else:
-                ground_truth_resampled.append(ground_truth_prev)
-        return ground_truth_resampled
 
 
 class LossCalculatorSimple(AbstractLossCalculator):
@@ -100,7 +77,7 @@ class LossCalculatorFactory:
     def get_loss_calculator(self) -> AbstractLossCalculator:
         if self.params["model"]["architecture"] == "sdnet":
             return LossCalculatorStdnet(self.params)
-        elif "deep" in self.params["model"]["architecture"]:
+        elif "deep" in self.params["model"]["architecture"].lower():
             return LossCalculatorDeepSupervision(self.params)
         else:
             return LossCalculatorSimple(self.params)
