@@ -19,7 +19,12 @@ from GANDLF.metrics.metric_calculators import (
     MetricCalculatorDeepSupervision,
     AbstractMetricCalculator,
 )
-from GANDLF.utils.pred_target_processors import PredictionTargetProcessorFactory
+from GANDLF.utils.pred_target_processors import (
+    PredictionTargetProcessorFactory,
+    AbstractPredictionTargetProcessor,
+    IdentityPredictionTargetProcessor,
+    DeepSupervisionPredictionTargetProcessor,
+)
 from GANDLF.parseConfig import parseConfig
 from GANDLF.utils.write_parse import parseTrainingCSV
 from GANDLF.utils import populate_header_in_parameters
@@ -56,6 +61,9 @@ def test_port_pred_target_processor_identity():
     processor = PredictionTargetProcessorFactory(
         config
     ).get_prediction_target_processor()
+    assert isinstance(
+        processor, IdentityPredictionTargetProcessor
+    ), f"Expected instance of {IdentityPredictionTargetProcessor}, got {type(processor)}"
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
     processed_preds, processed_target = processor(dummy_preds, dummy_target)
@@ -72,6 +80,9 @@ def test_port_pred_target_processor_deep_supervision():
     processor = PredictionTargetProcessorFactory(
         config
     ).get_prediction_target_processor()
+    assert isinstance(
+        processor, DeepSupervisionPredictionTargetProcessor
+    ), f"Expected instance of {DeepSupervisionPredictionTargetProcessor}, got {type(processor)}"
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
     processor(dummy_preds, dummy_target)
@@ -86,7 +97,9 @@ def test_port_loss_calculator_simple():
         config
     ).get_prediction_target_processor()
     loss_calculator = LossCalculatorFactory(config).get_loss_calculator()
-    assert isinstance(loss_calculator, LossCalculatorSimple)
+    assert isinstance(
+        loss_calculator, LossCalculatorSimple
+    ), f"Expected instance of {LossCalculatorSimple}, got {type(loss_calculator)}"
 
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
@@ -102,11 +115,14 @@ def test_port_loss_calculator_sdnet():
         config
     ).get_prediction_target_processor()
     loss_calculator = LossCalculatorFactory(config).get_loss_calculator()
+    assert isinstance(
+        loss_calculator, LossCalculatorStdnet
+    ), f"Expected instance of {LossCalculatorStdnet}, got {type(loss_calculator)}"
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
     processed_preds, processed_target = processor(dummy_preds, dummy_target)
     loss = loss_calculator(processed_preds, processed_target)
-    assert isinstance(loss_calculator, LossCalculatorStdnet)
+
     assert not torch.isnan(loss).any()
 
 
@@ -119,12 +135,15 @@ def test_port_loss_calculator_deep_supervision():
     processor = PredictionTargetProcessorFactory(
         config
     ).get_prediction_target_processor()
+    assert isinstance(
+        loss_calculator, LossCalculatorDeepSupervision
+    ), f"Expected instance of {LossCalculatorDeepSupervision}, got {type(loss_calculator)}"
+
     loss_calculator = LossCalculatorFactory(config).get_loss_calculator()
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
     processed_preds, processed_target = processor(dummy_preds, dummy_target)
     loss = loss_calculator(processed_preds, processed_target)
-    assert isinstance(loss_calculator, LossCalculatorDeepSupervision)
     assert not torch.isnan(loss).any()
 
 
@@ -134,7 +153,9 @@ def test_port_loss_calculator_deep_supervision():
 def test_port_metric_calculator_simple():
     config = read_config()
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
-    assert isinstance(metric_calculator, MetricCalculatorSimple)
+    assert isinstance(
+        metric_calculator, MetricCalculatorSimple
+    ), f"Expected instance subclassing {MetricCalculatorSimple}, got {type(metric_calculator)}"
     dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
     dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
     metric = metric_calculator(dummy_preds, dummy_target)
@@ -146,7 +167,9 @@ def test_port_metric_calculator_sdnet():
     config = read_config()
     config["model"]["architecture"] = "sdnet"
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
-    assert isinstance(metric_calculator, MetricCalculatorStdnet)
+    assert isinstance(
+        metric_calculator, MetricCalculatorStdnet
+    ), f"Expected instance of {MetricCalculatorStdnet}, got {type(metric_calculator)}"
 
     dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
     dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
@@ -162,7 +185,9 @@ def test_port_metric_calculator_deep_supervision():
     config = read_config()
     config["model"]["architecture"] = "deep_supervision"
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
-    assert isinstance(metric_calculator, MetricCalculatorDeepSupervision)
+    assert isinstance(
+        metric_calculator, MetricCalculatorDeepSupervision
+    ), f"Expected instance of {MetricCalculatorDeepSupervision}, got {type(metric_calculator)}"
 
     dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
     dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
@@ -176,7 +201,26 @@ def test_port_metric_calculator_deep_supervision():
 
 def test_port_model_initalization():
     config = read_config()
-    model = GandlfLightningModule(config)
-    assert model is not None
-    assert model.model is not None
-    assert isinstance(model.loss, AbstractLossCalculator)
+    module = GandlfLightningModule(config)
+    assert module is not None, "Lightning module is None"
+    assert module.model is not None, "Model architecture not initialized in the module"
+    assert isinstance(
+        module.loss, AbstractLossCalculator
+    ), f"Expected instance subclassing  {AbstractLossCalculator}, got {type(module.loss)}"
+    assert isinstance(
+        module.metric_calculators, AbstractMetricCalculator
+    ), f"Expected instance subclassing {AbstractMetricCalculator}, got {type(module.metric_calculators)}"
+    assert isinstance(
+        module.pred_target_processor, AbstractPredictionTargetProcessor
+    ), f"Expected instance subclassing {AbstractPredictionTargetProcessor}, got {type(module.pred_target_processor)}"
+    configured_optimizer, configured_scheduler = module.configure_optimizers()
+    # In case of both optimizer and scheduler configured, lightning returns tuple of lists (optimizers, schedulers)
+    # This is why I am checking for the first element of the iterable here
+    configured_optimizer = configured_optimizer[0]
+    configured_scheduler = configured_scheduler[0]
+    assert isinstance(
+        configured_optimizer, torch.optim.Optimizer
+    ), f"Expected instance subclassing  {torch.optim.Optimizer}, got {type(configured_optimizer)}"
+    assert isinstance(
+        configured_scheduler, torch.optim.lr_scheduler.LRScheduler
+    ), f"Expected instance subclassing  {torch.optim.lr_scheduler.LRScheduler}, got {type(configured_scheduler)}"
