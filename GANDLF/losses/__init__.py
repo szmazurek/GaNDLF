@@ -13,7 +13,6 @@ from .segmentation import (
 from .regression import CE, CEL, MSE_loss, L1_loss
 from .hybrid import DCCE, DCCE_Logits, DC_Focal
 
-
 # global defines for the losses
 global_losses_dict = {
     "dc": MCD_loss,
@@ -40,7 +39,7 @@ global_losses_dict = {
 }
 
 
-def get_loss(params):
+def get_loss(params: dict) -> object:
     """
     Function to get the loss definition.
 
