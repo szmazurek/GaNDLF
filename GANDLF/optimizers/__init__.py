@@ -15,7 +15,7 @@ from .wrap_torch import (
 
 from .wrap_monai import novograd_wrapper
 
-from .ademamix import ademamix_wrapper
+from .thirdparty import ademamix_wrapper, lion_wrapper, adopt_wrapper
 
 global_optimizer_dict = {
     "sgd": sgd,
@@ -32,6 +32,8 @@ global_optimizer_dict = {
     "novograd": novograd_wrapper,
     "nadam": nadam,
     "ademamix": ademamix_wrapper,
+    "lion": lion_wrapper,
+    "adopt": adopt_wrapper,
 }
 
 
