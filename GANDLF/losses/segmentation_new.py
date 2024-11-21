@@ -177,7 +177,7 @@ class MulticlassFocalLoss(AbstractSegmentationLoss):
         return loss_value  # no need to subtract from 1 in this case, hence the override
 
 
-class KullbackLeiblerDivergence(AbstractLossFunction):
+class KullbackLeiblerDivergenceLoss(AbstractLossFunction):
     def forward(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
         """
         Calculates the Kullback-Leibler divergence between two Gaussian distributions.

@@ -1,7 +1,7 @@
 import torch
-from GANDLF.losses import get_loss
+from GANDLF.losses import get_loss_new
 from abc import ABC, abstractmethod
-from typing import List
+from copy import deepcopy
 
 
 class AbstractLossCalculator(ABC):
@@ -11,7 +11,11 @@ class AbstractLossCalculator(ABC):
         self._initialize_loss()
 
     def _initialize_loss(self):
-        self.loss = get_loss(self.params)
+        self.loss = self._get_loss(self.params)
+
+    @staticmethod
+    def _get_loss(params: dict):
+        return get_loss_new(params)
 
     @abstractmethod
     def __call__(
@@ -23,20 +27,27 @@ class AbstractLossCalculator(ABC):
 class LossCalculatorStdnet(AbstractLossCalculator):
     def __init__(self, params):
         super().__init__(params)
-        self.l1_loss = get_loss(params)
-        self.kld_loss = get_loss(params)
-        self.mse_loss = get_loss(params)
+        self._get_proxy_losses()
+
+    def _get_proxy_losses(self):
+        copied_params = deepcopy(self.params)
+        copied_params["loss_function"] = "l1"
+        self.l1_loss = self._get_loss(copied_params)
+        copied_params["loss_function"] = "kld"
+        self.kld_loss = self._get_loss(copied_params)
+        copied_params["loss_function"] = "mse"
+        self.mse_loss = self._get_loss(copied_params)
 
     def __call__(self, prediction: torch.Tensor, target: torch.Tensor, *args):
         if len(prediction) < 2:
             image: torch.Tensor = args[0]
-            loss_seg = self.loss(prediction[0], target.squeeze(-1), self.params)
+            loss_seg = self.loss(prediction[0], target.squeeze(-1))
             loss_reco = self.l1_loss(prediction[1], image[:, :1, ...], None)
             loss_kld = self.kld_loss(prediction[2], prediction[3])
             loss_cycle = self.mse_loss(prediction[2], prediction[4], None)
             return 0.01 * loss_kld + loss_reco + 10 * loss_seg + loss_cycle
         else:
-            return self.loss(prediction, target, self.params)
+            return self.loss(prediction, target)
 
 
 class LossCalculatorDeepSupervision(AbstractLossCalculator):
@@ -53,12 +64,9 @@ class LossCalculatorDeepSupervision(AbstractLossCalculator):
         if len(prediction) > 1:
             loss = torch.tensor(0.0, requires_grad=True)
             for i in range(len(prediction)):
-                loss += (
-                    self.loss(prediction[i], target[i], self.params)
-                    * self.loss_weights[i]
-                )
+                loss += self.loss(prediction[i], target[i]) * self.loss_weights[i]
         else:
-            loss = self.loss(prediction, target, self.params)
+            loss = self.loss(prediction, target)
 
         return loss
 
@@ -67,7 +75,7 @@ class LossCalculatorSimple(AbstractLossCalculator):
     def __call__(
         self, prediction: torch.Tensor, target: torch.Tensor, *args
     ) -> torch.Tensor:
-        return self.loss(prediction, target, self.params)
+        return self.loss(prediction, target)
 
 
 class LossCalculatorFactory:
