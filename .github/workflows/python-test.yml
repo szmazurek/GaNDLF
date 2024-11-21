@@ -44,6 +44,12 @@ jobs:
         if: ${{steps.dependencies.outputs.other_modified_files_count > 0}} # Run on any non-docs change
         run: |
           pytest --cov=. --cov-report=xml --cov-append -k "transunet"
+        ### LIGHTNING PORT WORKING UNIT TESTS ###
+        ### These are now running only on 2d rad segmentation
+      - name: Run tests related to porting into lightning
+        if: ${{steps.dependencies.outputs.other_modified_files_count > 0}} # Run on any non-docs change
+        run: |
+          pytest --cov=. --cov-report=xml --cov-append -k "test_port"
       - name: Run entrypoints tests
         if: ${{steps.dependencies.outputs.other_modified_files_count > 0}} # Run on any non-docs change
         run: |
