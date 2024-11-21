@@ -199,7 +199,7 @@ def test_port_metric_calculator_deep_supervision():
 #### LIGHTNING MODULE ####
 
 
-def test_port_model_initalization():
+def test_port_model_initialization():
     config = read_config()
     module = GandlfLightningModule(config)
     assert module is not None, "Lightning module is None"
