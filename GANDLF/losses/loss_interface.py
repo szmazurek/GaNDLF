@@ -81,8 +81,8 @@ class AbstractRegressionLoss(AbstractLossFunction):
 
     def __init__(self, params: dict):
         super().__init__(params)
-        self.loss_calculator = self._initialize_loss_function_object()
         self.reduction_method = self._initialize_reduction_method()
+        self.loss_calculator = self._initialize_loss_function_object()
 
     def _initialize_reduction_method(self) -> str:
         """

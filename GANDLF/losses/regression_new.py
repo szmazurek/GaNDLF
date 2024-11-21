@@ -35,12 +35,15 @@ class BaseLossWithScaledTarget(AbstractRegressionLoss):
     General interface for the loss functions requiring scaling of the target tensor.
     """
 
+    def __init__(self, params: dict):
+        super().__init__(params)
+        self._initialize_scaling_factor()
+
     def _initialize_scaling_factor(self):
         loss_params: dict = self.params["loss_function"]
-        self.scaling_factor = loss_params.get("scaling_factor", 1.0)
+        self.scaling_factor = 1.0
         if isinstance(loss_params, dict):
             self.scaling_factor = loss_params.get("scaling_factor", self.scaling_factor)
-        return self.scaling_factor
 
     def _calculate_loss(self, prediction: torch.Tensor, target: torch.Tensor):
         return self.loss_calculator(prediction, target * self.scaling_factor)
