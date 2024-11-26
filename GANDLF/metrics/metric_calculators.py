@@ -26,7 +26,7 @@ class AbstractMetricCalculator(ABC):
         pass
 
 
-class MetricCalculatorStdnet(AbstractMetricCalculator):
+class MetricCalculatorSDNet(AbstractMetricCalculator):
     def __init__(self, params):
         super().__init__(params)
 
@@ -81,7 +81,7 @@ class MetricCalculatorFactory:
 
     def get_metric_calculator(self) -> AbstractMetricCalculator:
         if self.params["model"]["architecture"] == "sdnet":
-            return MetricCalculatorStdnet(self.params)
+            return MetricCalculatorSDNet(self.params)
         elif "deep" in self.params["model"]["architecture"].lower():
             return MetricCalculatorDeepSupervision(self.params)
         else:
