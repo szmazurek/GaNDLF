@@ -24,7 +24,7 @@ class AbstractLossCalculator(ABC):
         pass
 
 
-class LossCalculatorStdnet(AbstractLossCalculator):
+class LossCalculatorSDNet(AbstractLossCalculator):
     def __init__(self, params):
         super().__init__(params)
         self._get_proxy_losses()
@@ -84,7 +84,7 @@ class LossCalculatorFactory:
 
     def get_loss_calculator(self) -> AbstractLossCalculator:
         if self.params["model"]["architecture"] == "sdnet":
-            return LossCalculatorStdnet(self.params)
+            return LossCalculatorSDNet(self.params)
         elif "deep" in self.params["model"]["architecture"].lower():
             return LossCalculatorDeepSupervision(self.params)
         else:

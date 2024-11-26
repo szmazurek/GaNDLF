@@ -8,14 +8,14 @@ from GANDLF.models.lightning_module import GandlfLightningModule
 from GANDLF.losses.loss_calculators import (
     LossCalculatorFactory,
     LossCalculatorSimple,
-    LossCalculatorStdnet,
+    LossCalculatorSDNet,
     AbstractLossCalculator,
     LossCalculatorDeepSupervision,
 )
 from GANDLF.metrics.metric_calculators import (
     MetricCalculatorFactory,
     MetricCalculatorSimple,
-    MetricCalculatorStdnet,
+    MetricCalculatorSDNet,
     MetricCalculatorDeepSupervision,
     AbstractMetricCalculator,
 )
@@ -116,8 +116,8 @@ def test_port_loss_calculator_sdnet():
     ).get_prediction_target_processor()
     loss_calculator = LossCalculatorFactory(config).get_loss_calculator()
     assert isinstance(
-        loss_calculator, LossCalculatorStdnet
-    ), f"Expected instance of {LossCalculatorStdnet}, got {type(loss_calculator)}"
+        loss_calculator, LossCalculatorSDNet
+    ), f"Expected instance of {LossCalculatorSDNet}, got {type(loss_calculator)}"
     dummy_preds = torch.rand(4, 4, 4, 4)
     dummy_target = torch.rand(4, 4, 4, 4)
     processed_preds, processed_target = processor(dummy_preds, dummy_target)
@@ -168,8 +168,8 @@ def test_port_metric_calculator_sdnet():
     config["model"]["architecture"] = "sdnet"
     metric_calculator = MetricCalculatorFactory(config).get_metric_calculator()
     assert isinstance(
-        metric_calculator, MetricCalculatorStdnet
-    ), f"Expected instance of {MetricCalculatorStdnet}, got {type(metric_calculator)}"
+        metric_calculator, MetricCalculatorSDNnet
+    ), f"Expected instance of {MetricCalculatorSDNnet}, got {type(metric_calculator)}"
 
     dummy_preds = torch.randint(0, 4, (4, 4, 4, 4))
     dummy_target = torch.randint(0, 4, (4, 4, 4, 4))
