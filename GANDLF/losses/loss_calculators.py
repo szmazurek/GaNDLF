@@ -20,7 +20,7 @@ class AbstractLossCalculator(ABC):
         pass
 
 
-class LossCalculatorStdnet(AbstractLossCalculator):
+class LossCalculatorSDNet(AbstractLossCalculator):
     def __init__(self, params):
         super().__init__(params)
         self.l1_loss = get_loss(params)
