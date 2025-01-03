@@ -5,16 +5,22 @@ import psutil
 import torch
 import torchio
 import warnings
+import numpy as np
+import SimpleITK as sitk
+import lightning.pytorch as pl
+
 from medcam import medcam
 from copy import deepcopy
 from statistics import mean
-import lightning.pytorch as pl
+from multiprocessing import Lock
 from lightning.pytorch.utilities import rank_zero_only
+
 from GANDLF.logger import Logger
 from GANDLF.models import get_model
 from GANDLF.metrics import overall_stats
 from GANDLF.optimizers import get_optimizer
 from GANDLF.schedulers import get_scheduler
+from GANDLF.data.post_process import global_postprocessing_dict
 from GANDLF.losses.loss_calculators import LossCalculatorFactory
 from GANDLF.metrics.metric_calculators import MetricCalculatorFactory
 from GANDLF.utils.pred_target_processors import PredictionTargetProcessorFactory
@@ -23,30 +29,38 @@ from GANDLF.utils import (
     optimize_and_save_model,
     write_training_patches,
     one_hot,
+    reverse_one_hot,
     print_model_summary,
     get_date_time,
     save_model,
     load_model,
     version_check,
+    get_filename_extension_sanitized,
+    resample_image,
     BEST_MODEL_PATH_END,
     INITIAL_MODEL_PATH_END,
     LATEST_MODEL_PATH_END,
 )
 
-from overrides import override
 from typing import Tuple, Union, Dict, List, Any
 
 
 class GandlfLightningModule(pl.LightningModule):
+    CLASSIFICATION_REGRESSION_RESULTS_HEADER = "Epoch,SubjectID,PredictedValue\n"
+    FLOAT_FORMATTING_PRECISION = 4
+    MULTIPROCESSING_LOCK = Lock()
+
     def __init__(self, params: dict, output_dir: str):
         super().__init__()
         self.output_dir = output_dir
         self.params = deepcopy(params)
         self.current_best_loss = sys.float_info.max
         self.wait_count_before_early_stopping = 0
-        self._problem_type_is_regression_or_classification = (
-            self._check_if_regression_or_classification()
+        self._problem_type_is_regression = params["problem_type"] == "regression"
+        self._problem_type_is_classification = (
+            params["problem_type"] == "classification"
         )
+        self._problem_type_is_segmentation = params["problem_type"] == "segmentation"
         self._initialize_model()
         self._initialize_loss()
         self._initialize_metric_calculators()
@@ -54,22 +68,47 @@ class GandlfLightningModule(pl.LightningModule):
         self._initialize_model_save_paths()
 
     def _initialize_model(self):
+        """
+        Creates the BaseModel instance based on the parameters.
+        """
+
         self.model = get_model(self.params)
 
     def _initialize_loss(self):
+        """
+        Initializes the loss calculator based on the parameters. Loss calculator
+        logic differs for some specific model architectures, see the LossCalculatorFactory
+        for more details.
+        """
+
         self.loss = LossCalculatorFactory(self.params).get_loss_calculator()
 
     def _initialize_metric_calculators(self):
+        """
+        Initializes the metric calculators based on the parameters. Metric calculators
+        logic differs for some specific model architectures, see the MetricCalculatorFactory
+        for more details.
+        """
+
         self.metric_calculators = MetricCalculatorFactory(
             self.params
         ).get_metric_calculator()
 
     def _initialize_preds_target_processor(self):
+        """Initializes the prediction target processor based on the parameters.
+        This processor ensures that the prediction and target tensors are in the correct format,
+        as some architectures may require different formats for the predictions and targets.
+        """
+
         self.pred_target_processor = PredictionTargetProcessorFactory(
             self.params
         ).get_prediction_target_processor()
 
     def _initialize_model_save_paths(self):
+        """
+        Initializes the paths used for saving checkpoints of the model.
+        """
+
         self.model_paths = {
             "best": os.path.join(
                 self.output_dir,
@@ -85,11 +124,16 @@ class GandlfLightningModule(pl.LightningModule):
             ),
         }
 
-    def _check_if_regression_or_classification(self) -> bool:
-        return self.params["problem_type"] in ["classification", "regression"]
-
     @rank_zero_only
-    def _save_model(self, epoch, save_path, onnx_export):
+    def _save_model(self, epoch: int, save_path: str, onnx_export: bool):
+        """
+        Saves the model to the specified path, adhering to GANDLF save format.
+
+        Args:
+            epoch (int): The epoch number.
+            save_path (str): The path to save the model to.
+            onnx_export (bool): Whether to export the model to ONNX format
+        """
         save_model(
             {
                 "epoch": epoch,
@@ -103,10 +147,45 @@ class GandlfLightningModule(pl.LightningModule):
             onnx_export=onnx_export,
         )
 
+    def _prepare_metrics_dict_for_progbar_logging(
+        self, metric_results_dict: Dict[str, float]
+    ):
+        """
+        Formats the metric results dictionary into format suitable for
+        logging with Lightning's progress bar.
+
+        Args:
+            metric_results_dict (Dict[str, float]): The dictionary containing the metric results.
+        """
+        metric_results_dict_with_updated_suffix = (
+            self._add_stage_prefix_to_metric_results_dict(
+                metric_results_dict, self._determine_trainer_stage_string()
+            )
+        )
+        metric_results_dict_with_values_formatted = (
+            self._convert_per_class_metric_results_to_separate_key_value_pairs(
+                metric_results_dict_with_updated_suffix
+            )
+        )
+        return self._round_metric_values_in_dict(
+            metric_results_dict_with_values_formatted
+        )
+
     @staticmethod
-    def _ensure_proper_type_of_metric_values_for_progbar(
+    def _convert_per_class_metric_results_to_separate_key_value_pairs(
         metric_results_dict: Dict[str, Any]
     ) -> Dict[str, float]:
+        """
+        In case the metric results dictionary contains per-class values, this function
+        takes the values and creates separate key-value pairs for each class in the
+        results dictionary.
+
+        Args:
+            metric_results_dict (Dict[str, Any]): The dictionary containing the metric results.
+
+        Returns:
+            parsed_results_dict (Dict[str, float]): The dictionary containing the parsed results.
+        """
         parsed_results_dict = deepcopy(metric_results_dict)
         for metric_name, metric_value in metric_results_dict.items():
             if isinstance(metric_value, list):
@@ -117,17 +196,61 @@ class GandlfLightningModule(pl.LightningModule):
                 del parsed_results_dict[metric_name]
         return parsed_results_dict
 
+    @staticmethod
+    def _add_stage_prefix_to_metric_results_dict(
+        metric_results_dict: Dict[str, float], stage: str
+    ):
+        """
+        Ensures that metric names in the results dictionary are prefixed with the stage
+        """
+        metric_results_dict_with_updated_suffix = {
+            f"{stage}_{metric_name}": metric_value
+            for metric_name, metric_value in metric_results_dict.items()
+        }
+        return metric_results_dict_with_updated_suffix
+
+    def _round_metric_values_in_dict(self, metric_results_dict: Dict[str, float]):
+        """
+        Performs rounding of the metric values in the results dictionary.
+
+        Args:
+            metric_results_dict (Dict[str, float]): The dictionary containing the metric results.
+
+        Returns:
+            rounded_metric_results_dict (Dict[str, float]): The dictionary containing the rounded metric results.
+        """
+
+        return {
+            k: self._round_value_to_precision(v) for k, v in metric_results_dict.items()
+        }
+
+    def _round_value_to_precision(self, value: float):
+        """
+        Rounds the value to the specified precision, defined as module constant.
+
+        Args:
+            value (float): The value to round.
+
+        Returns:
+            rounded_value (float): The rounded value.
+        """
+
+        return round(value, self.FLOAT_FORMATTING_PRECISION)
+
     def forward(
         self, images: torch.Tensor
     ) -> Tuple[torch.Tensor, Union[torch.Tensor, None]]:
+        """
+        Forward pass of the model.
+        """
         attention_map = None
-        if "medcam_enabled" in self.params and self.params["medcam_enabled"]:
+        is_medcam_enabled = self.params.get("medcam_enabled", False)
+        if is_medcam_enabled:
             output, attention_map = self.model(images)
             if self.params["model"]["dimension"] == 2:
                 attention_map = torch.unsqueeze(attention_map, -1)
         else:
             output = self.model(images)
-
         return output, attention_map
 
     def on_train_start(self):
@@ -136,16 +259,25 @@ class GandlfLightningModule(pl.LightningModule):
         self._print_channels_info()
         self._try_to_load_previous_best_model()
         self._try_to_save_initial_model()
-        self._initialize_train_and_validation_loggers()
+        self._initialize_train_logger()
         self._initialize_training_epoch_containers()
 
+        # TODO check out if the disbled by default medcam is indeed what we
+        # meant - it was taken from original code
         if "medcam" in self.params:
-            self._enable_medcam()
-
+            self._inject_medcam_module()
+            self.params["medcam_enabled"] = False
         if "differential_privacy" in self.params:
             self._initialize_differential_privacy()
 
     def _try_to_load_previous_best_model(self):
+        """
+        Attempts to load the previous best model from the specified path.
+        If the model is not found, a warning is issued. If the model is found,
+        it is loaded and the training is continued from the last epoch.
+        If an error occurs during loading, a warning is issued and the training
+        is continued from scratch.
+        """
         if os.path.exists(self.model_paths["best"]):
             try:
                 checkpoint_dict = load_model(self.model_paths["best"], self.device)
@@ -170,7 +302,11 @@ class GandlfLightningModule(pl.LightningModule):
                 f"No previous best model found under the path {self.model_paths['best']}; Training from scratch"
             )
 
+    @rank_zero_only
     def _try_to_save_initial_model(self):
+        """
+        Saves the initial model at the specified path if it does not already exist.
+        """
         if not os.path.exists(self.model_paths["initial"]):
             self._save_model(self.current_epoch, self.model_paths["initial"], False)
             print(f"Initial model saved at {self.model_paths['initial']}")
@@ -179,7 +315,10 @@ class GandlfLightningModule(pl.LightningModule):
                 f"Initial model already exists at {self.model_paths['initial']}; Skipping saving"
             )
 
-    def _enable_medcam(self):
+    def _inject_medcam_module(self):
+        """
+        Extends the model with the medcam module, used for generating attention maps.
+        """
         self.model = medcam.inject(
             self.model,
             output_dir=os.path.join(
@@ -191,21 +330,13 @@ class GandlfLightningModule(pl.LightningModule):
             return_attention=True,
             enabled=False,
         )
-        # Should it really be set to false here? Seems like we are forcing it to be disabled
-        # as in later stages we are checking if it is true or not
-        self.params["medcam_enabled"] = False
 
-    def _initialize_train_and_validation_loggers(self):
+    @rank_zero_only
+    def _initialize_train_logger(self):
         self.train_logger = Logger(
             logger_csv_filename=os.path.join(self.output_dir, "logs_training.csv"),
             metrics=list(self.params["metrics"]),
             mode="train",
-        )
-        self.val_logger = Logger(
-            logger_csv_filename=os.path.join(self.output_dir, "logs_validation.csv"),
-            metrics=list(self.params["metrics"]),
-            mode="val",
-            add_epsilon=bool(self.params.get("differential_privacy")),
         )
 
     @rank_zero_only
@@ -214,6 +345,9 @@ class GandlfLightningModule(pl.LightningModule):
 
     @rank_zero_only
     def _print_initialization_info(self):
+        """
+        Basic info printed at the start of the training.
+        """
         if not (os.environ.get("HOSTNAME") is None):
             print("Hostname :", os.environ.get("HOSTNAME"), flush=True)
         if self.params["verbose"]:
@@ -229,10 +363,17 @@ class GandlfLightningModule(pl.LightningModule):
             self.params["patch_size"],
         )
 
+    @rank_zero_only
     def _initialize_training_epoch_containers(self):
+        """
+        Initializes the containers for storing the training epoch data.
+        They are used for accumulating the losses, metrics, predictions and labels
+        for each epoch, so final calculations can be made at the end of the epoch.
+        """
+
         self.train_losses: List[torch.Tensor] = []
         self.training_metric_values: List[Dict[str, float]] = []
-        if self._problem_type_is_regression_or_classification:
+        if self._problem_type_is_regression or self._problem_type_is_classification:
             self.train_predictions: List[torch.Tensor] = []
             self.train_labels: List[torch.Tensor] = []
 
@@ -241,6 +382,9 @@ class GandlfLightningModule(pl.LightningModule):
         print("Number of channels : ", self.params["model"]["num_channels"])
 
     def training_step(self, subject, batch_idx):
+        """
+        Single training optimization step.
+        """
         if self.params.get("save_training"):
             write_training_patches(subject, self.params)
 
@@ -249,15 +393,19 @@ class GandlfLightningModule(pl.LightningModule):
 
         images = self._prepare_images_batch_from_subject_data(subject)
         labels = self._prepare_labels_batch_from_subject_data(subject)
+        # TODO this is going to block any parallelism, as the spacing is going to unpredicatably change across GPUs
         self._set_spacing_params_for_subject(subject)
-        images, labels = self._process_inputs(images, labels)
+
+        images = self._ensure_proper_images_tensor_dimensions(images)
+        labels = self._process_labels(labels)
 
         model_output, _ = self.forward(images)
         model_output, labels = self.pred_target_processor(model_output, labels)
 
         loss = self.loss(model_output, labels)
         metric_results = self.metric_calculators(model_output, labels)
-        if self._problem_type_is_regression_or_classification:
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
             self.train_labels.append(labels.detach().cpu())
             self.train_predictions.append(
                 torch.argmax(model_output, dim=1).detach().cpu()
@@ -265,78 +413,98 @@ class GandlfLightningModule(pl.LightningModule):
 
         self.train_losses.append(loss.detach().cpu())
         self.training_metric_values.append(metric_results)
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log_dict(
-            self._ensure_proper_type_of_metric_values_for_progbar(metric_results),
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-        )
 
         return loss
 
-    def _prepare_images_batch_from_subject_data(self, subject):
-        images_batch = torch.cat(  # 5D tensor: (B,C, H, W, D)
-            [subject[key][torchio.DATA] for key in self.params["channel_keys"]], dim=1
+    def _prepare_images_batch_from_subject_data(self, subject_data: torchio.Subject):
+        """
+        Concatenates the images from the subject data into a single tensor.
+
+        Args:
+            subject_data (torchio.Subject): The torchio.Subject object containing the images.
+        Can be also a set of already extracted patches.
+
+        Returns:
+            images_batch (torch.Tensor): The concatenated images from the subject data
+        of shape (B, C, H, W, D).
+
+        """
+        images_batch = torch.cat(
+            [subject_data[key][torchio.DATA] for key in self.params["channel_keys"]],
+            dim=1,
         )
         return images_batch
 
-    def _prepare_labels_batch_from_subject_data(self, subject):
-        if "value_keys" in self.params:
-            # classification / regression (when label is scalar) or multilabel classif/regression
+    def _prepare_labels_batch_from_subject_data(self, subject: torchio.Subject):
+        """
+        Creates the label tensor from the subject data.
+
+        Args:
+            subject (torchio.Subject): The torchio.Subject object containing the label.
+
+        Returns:
+            label (torch.Tensor): The label tensor of shape (B, C, H, W, D) for segmentation,
+            or a tensor of shape (B, ) for classification/regression.
+        """
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
             label = torch.cat(
                 [subject[key] for key in self.params["value_keys"]], dim=0
             )
+            # TODO this for sure needs some further investigation
             # min is needed because for certain cases, batch size becomes smaller than the total remaining labels
             label = label.reshape(
                 min(self.params["batch_size"], len(label)),
                 len(self.params["value_keys"]),
             )
         else:
-            # segmentation; label is (B, C, H, W, D) image
             label = subject["label"][torchio.DATA]
 
         return label
 
     def _set_spacing_params_for_subject(self, subject):
-        if "spacing" in subject:
-            self.params["subject_spacing"] = subject["spacing"]
-        else:
-            self.params["subject_spacing"] = None
+        self.params["subject_spacing"] = subject.get("spacing", None)
 
-    def _process_inputs(
-        self, images: torch.Tensor, labels: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _ensure_proper_images_tensor_dimensions(self, images: torch.Tensor):
         """
-        Modify the input images and labels as needed for forward pass, loss
-        and metric calculations.
+        Modify the input images by removing the singular depth dimension added
+        by torchio for 2D images.
+
+        Args:
+            images (torch.Tensor): The input images tensor.
+
+        Returns:
+            images (torch.Tensor): The modified images tensor.
         """
 
-        if labels is not None:
-            if self.params["problem_type"] == "segmentation":
-                if labels.shape[1] == 3:
-                    labels = labels[:, 0, ...].unsqueeze(1)
-                    warnings.warn(
-                        "The label image is an RGB image, only the first channel will be used."
-                    )
+        if self.params["model"]["dimension"] == 2:
+            images = images.squeeze(-1)
 
-            assert len(labels) == len(images)
+        return images
+
+    def _process_labels(self, labels: torch.Tensor):
+        """
+        Modifies the labels tensor based on the problem type.
+        """
+
+        if self._problem_type_is_segmentation:
+            if labels.shape[1] == 3:
+                labels = labels[:, 0, ...].unsqueeze(1)
+                warnings.warn(
+                    "The label image is an RGB image, only the first channel will be used."
+                )
 
         # for segmentation remove the depth dimension from the label.
         # for classification / regression, flattens class / reg label from list (possible in multilabel) to scalar
         # TODO: second condition is crutch - in some cases label is passed as 1-d Tensor (B,) and if Batch size is 1,
         #  it is squeezed to scalar tensor (0-d) and the future logic fails
-        if labels is not None and len(labels.shape) != 1:
+        if len(labels.shape) != 1:
             labels = labels.squeeze(-1)
 
-        if self.params["problem_type"] == "segmentation":
+        if self._problem_type_is_segmentation:
             labels = one_hot(labels, self.params["model"]["class_list"])
 
-        if self.params["model"]["dimension"] == 2:
-            # removing depth, as torchio adds last dimension for 2D images
-            images = images.squeeze(-1)
-
-        return images, labels
+        return labels
 
     def _handle_dynamic_batch_size_in_differential_privacy_mode(self, subject):
         raise NotImplementedError(
@@ -356,6 +524,13 @@ class GandlfLightningModule(pl.LightningModule):
             self._print_epoch_start_time()
 
     def _write_epoch_start_process_resource_usage(self, epoch):
+        """
+        Writes the memory usage to a file at the start of the epoch.
+        Ran separately on each process in case of distributed training.
+
+        Args:
+            epoch (int): The current epoch number.
+        """
         filename = f"memory_usage_local_rank_{self.local_rank}_global_rank_{self.global_rank}.csv"
         memory_stats_dir = self._prepare_memory_stats_save_dir()
         full_filepath = os.path.join(memory_stats_dir, filename)
@@ -392,8 +567,12 @@ class GandlfLightningModule(pl.LightningModule):
                 + str(cuda_memory_stats["active.all.allocated"])
             )
         memory_info_string += ",\n"
+
+        # TODO evaluate if this indded works properly in distributed setting
+        self.MULTIPROCESSING_LOCK.acquire()
         with open(full_filepath, file_write_mode) as file_mem:
             file_mem.write(memory_info_string)
+        self.MULTIPROCESSING_LOCK.release()
 
     @rank_zero_only
     def _prepare_memory_stats_save_dir(self):
@@ -409,10 +588,8 @@ class GandlfLightningModule(pl.LightningModule):
     def _set_epoch_start_time(self):
         self.epoch_start_time = time.time()
 
-    # TODO when used with multiple GPUs, this should produce multiple logs
-    # for each GPU. We should think on doing allgather here in a function
-    # that is called on the main process (rank 0)
-
+    # TODO check if it indeed work properly and run only on rank 0
+    @rank_zero_only
     def on_train_epoch_end(self):
         epoch_metrics = {}
         metric_names = self.training_metric_values[0].keys()
@@ -422,15 +599,16 @@ class GandlfLightningModule(pl.LightningModule):
                 metric_name
             ] = self._compute_metric_mean_across_values_from_batches(metric_values)
 
-        if self._problem_type_is_regression_or_classification:
+        if self._problem_type_is_regression or self._problem_type_is_classification:
             training_epoch_average_metrics_overall = overall_stats(
                 torch.cat(self.train_predictions),
                 torch.cat(self.train_labels),
                 self.params,
             )
             epoch_metrics.update(training_epoch_average_metrics_overall)
-        train_losses_gathered = self.all_gather(self.train_losses)
-        mean_loss = torch.mean(torch.stack(train_losses_gathered)).item()
+        mean_loss = self._round_value_to_precision(
+            torch.mean(torch.stack(self.train_losses)).item()
+        )
 
         self._clear_training_epoch_containers()
 
@@ -439,10 +617,12 @@ class GandlfLightningModule(pl.LightningModule):
             mean_loss,
             self._ensure_proper_metric_formatting_for_logging(epoch_metrics),
         )
+        self.log("train_loss", mean_loss, on_epoch=True, prog_bar=True)
         self.log_dict(
-            self._ensure_proper_type_of_metric_values_for_progbar(epoch_metrics),
+            self._prepare_metrics_dict_for_progbar_logging(epoch_metrics),
             on_epoch=True,
             prog_bar=True,
+            sync_dist=True,
         )
 
         if self.params["verbose"]:
@@ -454,25 +634,37 @@ class GandlfLightningModule(pl.LightningModule):
         self._save_model(self.current_epoch, self.model_paths["latest"], False)
         print(f"Latest model saved")
 
-    @staticmethod
     def _compute_metric_mean_across_values_from_batches(
-        metric_values: List[Union[float, List[float]]]
+        self, metric_values: List[Union[float, List[float]]]
     ) -> Union[float, List[float]]:
         """
         Given a list of metrics calculated for each batch, computes the mean across all batches.
         Takes into account case where metric is a list of values (e.g. for each class).
+
+        Args:
+            metric_values (List[Union[float, List[float]]]): The list of metric values for each batch.
+
+        Returns:
+            Union[float, List[float]]: The mean value of the metric across all batches.
         """
         if isinstance(metric_values[0], list):
             return [
                 mean([batch_metrics[i] for batch_metrics in metric_values])
                 for i in range(len(metric_values[0]))
             ]
-        return mean(metric_values)
+        return self._round_value_to_precision(mean(metric_values))
 
     @staticmethod
     def _ensure_proper_metric_formatting_for_logging(metrics_dict: dict) -> dict:
         """
-        Helper function to ensure that all metric values are in the correct format for logging.
+        Helper function to ensure that all metric values are in the correct format for
+        GANDLF's logging system.
+
+        Args:
+            metrics_dict (dict): The dictionary containing the metric values.
+
+        Returns:
+            output_metrics_dict (dict): The dictionary containing the formatted metric values.
         """
         output_metrics_dict = deepcopy(metrics_dict)
         for metric in metrics_dict.keys():
@@ -487,7 +679,11 @@ class GandlfLightningModule(pl.LightningModule):
 
         return output_metrics_dict
 
+    @rank_zero_only
     def _save_epoch_end_checkpoint(self):
+        """
+        Saves the model at the end of the epoch.
+        """
         epoch_save_path = os.path.join(
             self.output_dir,
             self.params["model"]["architecture"]
@@ -507,13 +703,15 @@ class GandlfLightningModule(pl.LightningModule):
             flush=True,
         )
 
+    @rank_zero_only
     def _clear_training_epoch_containers(self):
         self.train_losses = []
         self.training_metric_values = []
-        if self._problem_type_is_regression_or_classification:
+        if self._problem_type_is_regression or self._problem_type_is_classification:
             self.train_predictions = []
             self.train_labels = []
 
+    @rank_zero_only
     def on_train_end(self):
         if os.path.exists(self.model_paths["best"]):
             # Why don't we handle it here with the full save_model function?
@@ -531,24 +729,615 @@ class GandlfLightningModule(pl.LightningModule):
             flush=True,
         )
 
+    @rank_zero_only
     def on_validation_start(self):
+        self._initialize_validation_epoch_containers()
+        self._initialize_validation_logger()
+
+    @rank_zero_only
+    def _initialize_validation_epoch_containers(self):
         self.val_losses: List[torch.Tensor] = []
         self.validation_metric_values: List[Dict[str, float]] = []
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            self.val_predictions: List[float] = []
+            self.val_labels: List[float] = []
+            if self.params["save_output"]:
+                self.rows_to_write: List[str] = []
 
-    # TODO placeholder for now
+    @rank_zero_only
+    def _initialize_validation_logger(self):
+        self.val_logger = Logger(
+            logger_csv_filename=os.path.join(self.output_dir, "logs_validation.csv"),
+            metrics=list(self.params["metrics"]),
+            mode="val",
+            add_epsilon=bool(self.params.get("differential_privacy")),
+        )
+
+    @rank_zero_only
+    def on_validation_epoch_start(self):
+        # TODO this is dead code both here and in original loops
+        # by default medcam is injected at the training and ["medcam_enabled"] is set to False
+        # so this block is never executed
+        if self.params["medcam_enabled"]:
+            self.model.enable_medcam()
+            self.params["medcam_enabled"] = True
+        self._current_validation_epoch_save_dir = os.path.join(
+            self.output_dir, f"output_validation", f"epoch_{self.current_epoch}"
+        )
+        self._ensure_path_exists(self._current_validation_epoch_save_dir)
+
     def validation_step(self, subject, batch_idx):
-        loss = torch.randn([1])
+        if self.params["verbose"]:
+            self._print_currently_processed_subject(subject)
+
+        # TODO this is going to block any parallelism, as the spacing is going to unpredicatably change across GPUs
+        self._set_spacing_params_for_subject(subject)
+
+        subject_dict = self._initialize_subject_dict_nontraining_mode(subject)
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            model_output = self._regression_or_classification_nontraining_step(
+                subject_dict, str(subject["subject_id"][0])
+            )
+            label = self._initialize_nontraining_label_ground_truth_classification_or_regression(
+                subject
+            )
+        else:
+            model_output = self._segmentation_nontraining_step(subject, subject_dict)
+            label = self._initialize_nontraining_label_ground_truth_segmentation(
+                subject
+            )
+
+        label = self._process_labels(label)
+        model_output, label = self.pred_target_processor(model_output, label)
+
+        loss = self.loss(model_output, label)
+        metric_results = self.metric_calculators(model_output, label)
+
         self.val_losses.append(loss)
-        self.log("val_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.validation_metric_values.append(metric_results)
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            model_prediction = (
+                torch.argmax(model_output[0], 0)
+                if self._problem_type_is_classification
+                else model_output[0]
+            )  # TODO am I right here? For regression, we should not take argmax
+            self.val_predictions.append(model_prediction.item())
+            self.val_labels.append(label.item())
+
         return loss
 
-    # TODO to be extended
+    def _print_currently_processed_subject(self, subject: torchio.Subject):
+        print("== Current subject:", subject["subject_id"], flush=True)
+
+    def _initialize_subject_dict_nontraining_mode(self, subject: torchio.Subject):
+        """
+        Create a dictionary containing the subject data for the non-training mode
+        (validation, testing, inference).
+
+        Args:
+            subject (torchio.Subject): The subject data.
+
+        Returns:
+            subject_dict (Dict[str, torchio.Image]): The dictionary containing the subject data.
+        """
+        subject_dict = {}
+        subject_dict["label"] = torchio.LabelMap(
+            path=subject["label"]["path"],
+            tensor=subject["label"]["data"].squeeze(0),
+            affine=subject["label"]["affine"].squeeze(0),
+        )
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            for key in self.params["value_keys"]:
+                subject_dict["value_" + key] = subject[key]
+
+        for channel_key in self.params["channel_keys"]:
+            subject_dict[channel_key] = torchio.ScalarImage(
+                path=subject[channel_key]["path"],
+                tensor=subject[channel_key]["data"].squeeze(0),
+                affine=subject[channel_key]["affine"].squeeze(0),
+            )
+        return subject_dict
+
+    def _initialize_nontraining_label_ground_truth_classification_or_regression(
+        self, subject: torchio.Subject
+    ):
+        """
+        Initializes the ground truth label for classification or regression problems
+        in the non-training mode (validation, testing, inference).
+
+        Args:
+            subject_dict (torchio.Subject): The dictionary containing the subject data.
+
+        Returns:
+            label (torch.Tensor): The ground truth label tensor.
+        """
+        return torch.cat([subject[key] for key in self.params["value_keys"]], dim=0)
+
+    def _initialize_nontraining_label_ground_truth_segmentation(
+        self, subject: torchio.Subject
+    ):
+        """
+        Initializes the ground truth label for segmentation problems in the non-training mode
+        (validation, testing, inference).
+
+        Args:
+            subject_dict (torchio.Subject): The dictionary containing the subject data.
+
+        Returns:
+            label (torch.Tensor): The ground truth label tensor
+        """
+
+        return subject["label"]["data"]
+
+    def _regression_or_classification_nontraining_step(
+        self, subject_dict: dict, subject_id: str
+    ):
+        """
+        Full processing step for regression and classification problems in the non-training mode
+        (validation, testing, inference).
+
+        Args:
+            subject_dict (dict): The dictionary containing the subject data.
+            subject_id (str): The subject ID.
+
+        Returns:
+            prediction_logit (torch.Tensor): The prediction logits.
+        """
+
+        def _prepare_row_for_output_csv(
+            subject_id: str, prediction_logit: float, epoch: int
+        ):
+            """
+            Helper function to prepare the row for the output CSV file.
+
+            Args:
+                subject_id (str): The subject ID.
+                prediction_logit (float): The prediction logit.
+                epoch (int): The epoch number.
+
+            Returns:
+                row (str): The row to write to the output CSV file.
+            """
+
+            return f"{epoch},{subject_id},{prediction_logit}\n"
+
+        def _process_prediction_logit_for_row_writing(
+            prediction_logit: torch.Tensor, scaling_factor: float
+        ):
+            """
+            Processes the prediction logits for writing to the output CSV file.
+
+            Args:
+                prediction_logit (torch.Tensor): The prediction logits.
+                scaling_factor (float): The scaling factor modifying the prediction logit.
+
+            Returns:
+                prediction_logit (float): The processed prediction logit.
+            """
+            return prediction_logit.cpu().max().item() / scaling_factor
+
+        prediction_logit = self._get_predictions_on_subject_using_label_sampler(
+            subject_dict
+        )
+        if self.params["save_output"]:
+            processed_logit = _process_prediction_logit_for_row_writing(
+                prediction_logit, self.params["scaling_factor"]
+            )
+            self.rows_to_write.append(
+                _prepare_row_for_output_csv(
+                    subject_id, processed_logit, self.current_epoch
+                )
+            )
+        return prediction_logit
+
+    # TODO this whole logic can be packed into something separate, as it is only used
+    # in validation of regression and classification problems
+    def _get_predictions_on_subject_using_label_sampler(
+        self, subject_dict: dict
+    ) -> torch.Tensor:
+        """
+        Make predictions on the subject using the label sampler. Used for regression and classification problems.
+
+        Args:
+            subject_dict (dict): The dictionary containing the subject data.
+
+        Returns:
+            total_logits_for_all_patches (torch.Tensor): The total logits for all patches
+        extracted from a subject, normalized by the number of samples per volume.
+        """
+
+        def _prepare_images_batch_from_patch_regression_or_classification_with_label_sampler(
+            patches_batch: torchio.Subject,
+        ):
+            """
+            Sampling the patches using the label sampler requires a different approach
+            to preparing the images batch (concatenation dimension changes compared to logic
+            in other steps).
+
+            Args:
+                patches_batch (torchio.Subject): The batch of patches for the subject.
+
+            Returns:
+                images_batch_from_patches (torch.Tensor): The images batch from the patches.
+            """
+            images_batch_from_patches = torch.cat(
+                [
+                    patches_batch[key][torchio.DATA]
+                    for key in self.params["channel_keys"]
+                ],
+                dim=0,
+            ).unsqueeze(0)
+            if images_batch_from_patches.shape[-1] == 1:
+                images_batch_from_patches = torch.squeeze(images_batch_from_patches, -1)
+            return images_batch_from_patches
+
+        sampler = torchio.data.LabelSampler(self.params["patch_size"])
+        tio_subject = torchio.Subject(subject_dict)
+        patch_loader = sampler(
+            tio_subject, num_patches=self.params["q_samples_per_volume"]
+        )
+
+        model_outputs_list: List[torch.Tensor] = []
+        for patches_batch in patch_loader:
+            images_from_patches = _prepare_images_batch_from_patch_regression_or_classification_with_label_sampler(
+                patches_batch
+            )
+            images_from_patches = self._ensure_proper_images_tensor_dimensions(
+                images_from_patches
+            )
+            model_output, _ = self.forward(images_from_patches)
+            model_outputs_list.append(model_output)
+
+        total_logits_for_all_patches = torch.cat(model_outputs_list).sum(
+            dim=0, keepdim=True
+        )
+        return total_logits_for_all_patches / self.params["q_samples_per_volume"]
+
+    def _segmentation_nontraining_step(
+        self, subject: torchio.Subject, subject_dict: dict
+    ):
+        """
+        Full processing step for segmentation problems in the non-training mode
+        (validation, testing, inference).
+
+        Args:
+            subject_dict (dict): The dictionary containing the subject data.
+
+        Returns:
+            predicted_segmentation_mask (torch.Tensor): The predicted segmentation mask.
+        """
+
+        predicted_segmentation_mask = (
+            self._get_predictions_on_subject_using_grid_sampler(subject_dict)
+        )
+        if self.params["save_output"]:
+            self._save_predictions_for_segmentation_subject(
+                predicted_segmentation_mask, subject
+            )
+        return predicted_segmentation_mask
+
+    @rank_zero_only
+    def _determine_trainer_stage_string(self):
+        """
+        Helper function to determine the trainer stage and store it as a module attribute.
+        """
+        if self.trainer.validating:
+            return "val"
+        elif self.trainer.testing:
+            return "test"
+        elif self.trainer.predicting:
+            return "inference"
+        else:
+            return "train"
+
+    def _determine_save_path_to_use(self):
+        """
+        Helper function to determine the output save path based on the trainer stage.
+        """
+        if self.trainer.validating:
+            return self._current_validation_epoch_save_dir
+        elif self.trainer.testing:
+            return self._current_test_epoch_save_dir
+        elif self.trainer.predicting:
+            raise RuntimeError("Not implemented yet")
+        else:
+            raise RuntimeError("Output save path cannot be determined for training")
+
+    def _get_predictions_on_subject_using_grid_sampler(self, subject_dict: dict):
+        """
+        Make predictions on the subject using the grid sampler. This is used in segmentation
+        problems in validation and testing and for all problems in inference
+        (as no ground truth is available in inference).
+
+        Args:
+            subject_dict (dict): The dictionary containing the subject data.
+
+        Returns:
+            aggregated_predictions (torch.Tensor): The predicted segmentation mask.
+        """
+
+        def _ensure_output_shape_compatibility_with_torchio(model_output: torch.Tensor):
+            """
+            Helper function to ensure that the output shape is compatible with torchio (4D for 2D segmentation).
+
+            Args:
+                model_output (torch.Tensor): The model output tensor.
+
+            Returns:
+                model_output (torch.Tensor): The model output tensor with the correct shape.
+            """
+            if (
+                self.params["model"]["dimension"] == 2
+                and self._problem_type_is_segmentation
+            ):
+                model_output = model_output.unsqueeze(-1)
+            return model_output
+
+        grid_sampler = self._prepare_grid_sampler(subject_dict)
+        patch_loader = self._prepare_dataloader_from_grid_sampler(grid_sampler)
+
+        prediction_aggregator = torchio.inference.GridAggregator(
+            grid_sampler,
+            overlap_mode=self.params["inference_mechanism"]["grid_aggregator_overlap"],
+        )
+        if self.params["medcam_enabled"]:
+            medcam_attention_map_aggregator = torchio.inference.GridAggregator(
+                grid_sampler,
+                overlap_mode=self.params["inference_mechanism"][
+                    "grid_aggregator_overlap"
+                ],
+            )
+        for patches_batch in patch_loader:
+            images_from_patches = self._prepare_images_batch_from_subject_data(
+                patches_batch
+            )
+            images_from_patches = self._ensure_proper_images_tensor_dimensions(
+                images_from_patches
+            )
+            model_output, attention_map = self.forward(images_from_patches)
+            model_output = _ensure_output_shape_compatibility_with_torchio(model_output)
+            if self.params["medcam_enabled"]:
+                medcam_attention_map_aggregator.add_batch(
+                    attention_map, patches_batch[torchio.LOCATION]  # type: ignore
+                )
+            prediction_aggregator.add_batch(
+                model_output, patches_batch[torchio.LOCATION]
+            )
+        if self.params["medcam_enabled"]:
+            attention_map = medcam_attention_map_aggregator.get_output_tensor()
+            for i, n in enumerate(attention_map):
+                self.model.save_attention_map(
+                    n.squeeze(), raw_input=images_from_patches[i].squeeze(-1)
+                )
+        return prediction_aggregator.get_output_tensor().unsqueeze(0)
+
+    def _prepare_grid_sampler(self, subject_dict: dict):
+        """
+        Creates the grid sampler for the grid aggregator.
+
+        Args:
+            subject_dict (dict): The dictionary containing the subject data.
+
+        Returns:
+            grid_sampler (torchio.inference.GridSampler): The grid sampler.
+        """
+        grid_sampler = torchio.inference.GridSampler(
+            torchio.Subject(subject_dict),
+            self.params["patch_size"],
+            patch_overlap=self.params["inference_mechanism"]["patch_overlap"],
+        )
+        return grid_sampler
+
+    def _prepare_dataloader_from_grid_sampler(
+        self, grid_sampler: torchio.inference.GridSampler
+    ):
+        """
+        Creates the dataloader from the grid sampler.
+
+        Args:
+            grid_sampler (torchio.inference.GridSampler): The grid sampler.
+
+        Returns:
+            patch_loader (torch.utils.data.DataLoader): The patch loader.
+        """
+
+        return torch.utils.data.DataLoader(grid_sampler, batch_size=1)  # type: ignore
+
+    # TODO check if it indeed work properly and run only on rank 0
+    @rank_zero_only
     def on_validation_epoch_end(self):
-        val_losses_gathered = self.all_gather(self.val_losses)
-        mean_loss = torch.mean(torch.stack(val_losses_gathered)).item()
+        validation_epoch_average_metrics = {}
+        metric_names = self.validation_metric_values[0].keys()
+        for metric_name in metric_names:
+            metric_values = [x[metric_name] for x in self.validation_metric_values]
+            validation_epoch_average_metrics[
+                metric_name
+            ] = self._compute_metric_mean_across_values_from_batches(metric_values)
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            validation_epoch_average_metrics_overall = overall_stats(
+                torch.tensor(self.val_predictions),
+                torch.tensor(self.val_labels),
+                self.params,
+            )
+            validation_epoch_average_metrics.update(
+                validation_epoch_average_metrics_overall
+            )
+        mean_loss = self._round_value_to_precision(
+            torch.mean(torch.stack(self.val_losses)).item()
+        )
+
+        self._clear_validation_epoch_containers()
+
+        self.val_logger.write(
+            self.current_epoch,
+            mean_loss,
+            self._ensure_proper_metric_formatting_for_logging(
+                validation_epoch_average_metrics
+            ),
+        )
+
+        self.log("val_loss", mean_loss, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            self._prepare_metrics_dict_for_progbar_logging(
+                validation_epoch_average_metrics
+            ),
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=False,
+        )
+
         self._check_if_early_stopping(mean_loss)
 
-    def _check_if_early_stopping(self, val_loss):
+        if self.params["save_output"] and (
+            self._problem_type_is_regression or self._problem_type_is_classification
+        ):
+            self._save_predictions_for_regression_or_classification(self.rows_to_write)
+
+    @rank_zero_only
+    def _clear_validation_epoch_containers(self):
+        self.val_losses = []
+        self.validation_metric_values = []
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            self.val_predictions = []
+            self.val_labels = []
+            if self.params["save_output"]:
+                self.rows_to_write = []
+
+    @rank_zero_only
+    def _ensure_path_exists(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+    # TODO called at the validation step, NOT at the end of the epoch - we want to avoid
+    # saving all predictions for all subjects for the end of the epoch
+    def _save_predictions_for_segmentation_subject(
+        self, predicted_segmentation_mask: torch.Tensor, subject: torchio.Subject
+    ):
+        """
+        Saves the predicted segmentation mask for a given subject, performing the necessary postprocessing
+        steps.
+
+        Args:
+            predicted_segmentation_mask (torch.Tensor): The predicted segmentation mask, extracted
+        from the grid aggregator when all validation patches for this subject have
+        been processed.
+            subject (torchio.Subject): The subject for which the segmentation mask was predicted, used
+        to extract the metadata.
+        """
+
+        def _convert_subject_to_sitk_format(subject: torchio.Subject):
+            return torchio.ScalarImage(
+                tensor=subject["1"]["data"].squeeze(0),
+                affine=subject["1"]["affine"].squeeze(0),
+            ).as_sitk()
+
+        def _postprocess_raw_segmentation_mask(
+            segmentation_mask: np.ndarray, params: dict
+        ):
+            for postprocessor in params["data_postprocessing"]:
+                for _class in range(0, params["model"]["num_classes"]):
+                    segmentation_mask[0, _class, ...] = global_postprocessing_dict[
+                        postprocessor
+                    ](segmentation_mask[0, _class, ...], params)
+
+            return segmentation_mask
+
+        def _swap_mask_axes_for_sitk_save_format_compatibility(
+            segmentation_mask: np.ndarray,
+        ):
+            return np.swapaxes(segmentation_mask, 0, 2)
+
+        def _postprocess_one_hot_reversed_segmentation_mask(
+            segmentation_mask: np.ndarray, params: dict
+        ):
+            for postprocessor in params[
+                "data_postprocessing_after_reverse_one_hot_encoding"
+            ]:
+                segmentation_mask = global_postprocessing_dict[postprocessor](
+                    segmentation_mask, params
+                )
+
+            return segmentation_mask
+
+        def _determine_final_prediction_mask_shape(segmentation_mask: np.ndarray):
+            if segmentation_mask.shape[0] == 1:
+                return segmentation_mask.squeeze(0)
+            elif segmentation_mask.shape[-1] == 1:
+                return segmentation_mask.squeeze(-1)
+            else:
+                return segmentation_mask
+
+        predicted_segmentation_mask_numpy = predicted_segmentation_mask.numpy()
+        predicted_segmentation_mask_numpy = _postprocess_raw_segmentation_mask(
+            predicted_segmentation_mask_numpy, self.params
+        )
+        # taking 0-th element as the batch size is 1, and this is required by reverse_one_hot function
+        decoded_segmentation_mask = reverse_one_hot(
+            predicted_segmentation_mask_numpy[0], self.params["model"]["class_list"]
+        )
+        decoded_segmentation_mask = _swap_mask_axes_for_sitk_save_format_compatibility(
+            decoded_segmentation_mask
+        )
+        decoded_segmentation_mask = _postprocess_one_hot_reversed_segmentation_mask(
+            decoded_segmentation_mask, self.params
+        )
+        decoded_segmentation_mask = _determine_final_prediction_mask_shape(
+            decoded_segmentation_mask
+        )
+
+        image_save_format = get_filename_extension_sanitized(subject["1"]["path"][0])
+        if image_save_format in [".jpg", ".jpeg", ".png"]:
+            decoded_segmentation_mask = decoded_segmentation_mask.astype(np.uint8)
+
+        subject_converted_to_sikt_format = _convert_subject_to_sitk_format(subject)
+        result_sikt_image = sitk.GetImageFromArray(decoded_segmentation_mask)
+        result_sikt_image.CopyInformation(subject_converted_to_sikt_format)
+
+        if "resample" in self.params["data_preprocessing"]:
+            result_sikt_image = resample_image(
+                result_sikt_image,
+                subject_converted_to_sikt_format.GetSpacing(),
+                interpolator=sitk.sitkNearestNeighbor,
+            )
+        segmentation_mask_save_path = os.path.join(
+            self._determine_save_path_to_use(),
+            subject["subject_id"][0],
+            f"{subject['subject_id'][0]}_seg_process_rank_{self.global_rank}{image_save_format}",
+        )
+        self._ensure_path_exists(os.path.dirname(segmentation_mask_save_path))
+        sitk.WriteImage(result_sikt_image, segmentation_mask_save_path)
+
+    @rank_zero_only
+    def _save_predictions_for_regression_or_classification(
+        self, rows_to_write: List[List[str]]
+    ):
+        """
+        Saves the predictions for regression or classification problems to a CSV file.
+
+        Args:
+            rows_to_write (List[List[str]]): The rows to write to the CSV file.
+        """
+
+        csv_save_path = os.path.join(
+            self._determine_save_path_to_use(), "output_predictions.csv"
+        )
+        file_contents_merged = self.CLASSIFICATION_REGRESSION_RESULTS_HEADER.join(
+            [",".join(row) for row in rows_to_write]
+        )
+        with open(csv_save_path, "w") as file:
+            file.write(file_contents_merged)
+
+    # TODO separate it into checking and saving functions, perhaps even separate class
+    @rank_zero_only
+    def _check_if_early_stopping(self, val_loss: float):
+        """
+        Checks if early stopping should be triggered based on the validation loss.
+        If the loss improves, the best model is saved.
+        """
         previous_best_loss = deepcopy(self.current_best_loss)
         if val_loss < self.current_best_loss:
             self.current_best_loss = val_loss
@@ -573,12 +1362,104 @@ class GandlfLightningModule(pl.LightningModule):
         del previous_best_loss
 
     def on_test_start(self):
-        self.test_metric_values: List[Dict[str, float]] = []
+        self._initialize_test_epoch_containers()
+        self._initialize_test_logger()
+
+    @rank_zero_only
+    def _initialize_test_logger(self):
         self.test_logger = Logger(
             logger_csv_filename=os.path.join(self.output_dir, "logs_test.csv"),
             metrics=list(self.params["metrics"]),
             mode="test",
         )
+
+    @rank_zero_only
+    def _initialize_test_epoch_containers(self):
+        self.test_losses: List[torch.Tensor] = []
+        self.test_metric_values: List[Dict[str, float]] = []
+
+    def on_test_epoch_start(self):
+        if self.params["medcam_enabled"]:
+            self.model.enable_medcam()
+            self.params["medcam_enabled"] = True
+
+        self._current_test_epoch_save_dir = os.path.join(
+            self.output_dir, f"output_test", f"epoch_{self.current_epoch}"
+        )
+        self._ensure_path_exists(self._current_test_epoch_save_dir)
+
+    def test_step(self, subject, batch_idx):
+        if self.params["verbose"]:
+            self._print_currently_processed_subject(subject)
+
+        self._set_spacing_params_for_subject(subject)
+
+        subject_dict = self._initialize_subject_dict_nontraining_mode(subject)
+
+        if self._problem_type_is_regression or self._problem_type_is_classification:
+            model_output = self._regression_or_classification_nontraining_step(
+                subject_dict, subject["subject_id"][0]
+            )
+            label = self._initialize_nontraining_label_ground_truth_classification_or_regression(
+                subject
+            )
+        else:
+            model_output = self._segmentation_nontraining_step(subject, subject_dict)
+            label = self._initialize_nontraining_label_ground_truth_segmentation(
+                subject
+            )
+
+        label = self._process_labels(label)
+        model_output, label = self.pred_target_processor(model_output, label)
+
+        loss = self.loss(model_output, label)
+        metric_results = self.metric_calculators(model_output, label)
+
+        self.test_losses.append(loss)
+        self.test_metric_values.append(metric_results)
+
+        return loss
+
+    @rank_zero_only
+    def on_test_epoch_end(self):
+        test_epoch_average_metrics = {}
+        metric_names = self.test_metric_values[0].keys()
+        for metric_name in metric_names:
+            metric_values = [x[metric_name] for x in self.test_metric_values]
+            test_epoch_average_metrics[
+                metric_name
+            ] = self._compute_metric_mean_across_values_from_batches(metric_values)
+
+        mean_loss = self._round_value_to_precision(
+            torch.mean(torch.stack(self.test_losses)).item()
+        )
+
+        self._clear_test_epoch_containers()
+
+        self.test_logger.write(
+            self.current_epoch,
+            mean_loss,
+            self._ensure_proper_metric_formatting_for_logging(
+                test_epoch_average_metrics
+            ),
+        )
+
+        self.log("test_loss", mean_loss, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            self._prepare_metrics_dict_for_progbar_logging(test_epoch_average_metrics),
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=False,
+        )
+        if self.params["save_output"] and (
+            self._problem_type_is_regression or self._problem_type_is_classification
+        ):
+            self._save_predictions_for_regression_or_classification(self.rows_to_write)
+
+    @rank_zero_only
+    def _clear_test_epoch_containers(self):
+        self.test_losses = []
+        self.test_metric_values = []
 
     def configure_optimizers(self):
         params = deepcopy(self.params)
@@ -592,6 +1473,10 @@ class GandlfLightningModule(pl.LightningModule):
         return optimizer
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        """
+        A method called by Lightning to transfer the batch to the device.
+        In case of GANDLF, we need custom logic to transfer the data to the device.
+        """
         batch = self._move_image_data_to_device(batch, device)
         batch = self._move_labels_or_values_to_device(batch, device)
 
@@ -602,7 +1487,6 @@ class GandlfLightningModule(pl.LightningModule):
             subject[channel_key][torchio.DATA] = subject[channel_key][torchio.DATA].to(
                 device
             )
-
         return subject
 
     def _move_labels_or_values_to_device(self, subject, device):
