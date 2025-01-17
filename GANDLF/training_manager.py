@@ -2,7 +2,6 @@ import pandas as pd
 import os, pickle, shutil
 from pathlib import Path
 
-from GANDLF.compute import training_loop
 from GANDLF.utils import get_dataframe, split_data
 from GANDLF.compute.generic import (
     TrainingSubsetDataParser,
