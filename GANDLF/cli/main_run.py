@@ -16,7 +16,6 @@ def main_run(
     config_file: str,
     model_dir: str,
     train_mode: bool,
-    device: str,
     resume: bool,
     reset: bool,
     output_dir: Optional[str] = None,
@@ -95,7 +94,6 @@ def main_run(
                 dataframe_testing=data_testing,
                 outputDir=parameters["output_dir"],
                 parameters=parameters,
-                device=device,
                 resume=resume,
                 reset=reset,
             )
@@ -107,7 +105,6 @@ def main_run(
                 dataframe=data_full,
                 outputDir=parameters["output_dir"],
                 parameters=parameters,
-                device=device,
                 resume=resume,
                 reset=reset,
             )
