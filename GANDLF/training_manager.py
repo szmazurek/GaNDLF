@@ -17,12 +17,7 @@ import yaml
 
 
 def TrainingManager(
-    dataframe: pd.DataFrame,
-    outputDir: str,
-    parameters: dict,
-    device: str,
-    resume: bool,
-    reset: bool,
+    dataframe: pd.DataFrame, outputDir: str, parameters: dict, resume: bool, reset: bool
 ) -> None:
     """
     This is the training manager that ties all the training functionality together
@@ -31,7 +26,6 @@ def TrainingManager(
         dataframe (pandas.DataFrame): The full data from CSV.
         outputDir (str): The main output directory.
         parameters (dict): The parameters dictionary.
-        device (str): The device to perform computations on.
         resume (bool): Whether the previous run will be resumed or not.
         reset (bool): Whether the previous run will be reset or not.
     """
@@ -104,14 +98,13 @@ def TrainingManager(
                     data_dict[data_type] = get_dataframe(currentDataPickle)
 
         # Dataloader initialization - should be extracted somewhere else (preferably abstracted away)
-        # Train
+
         train_subset_parser = TrainingSubsetDataParser(
             data_dict_files["training"], parameters
         )
         train_loader = train_subset_parser.create_subset_dataloader()
         parameters = train_subset_parser.get_params_extended_with_subset_data()
 
-        # Validation
         val_subset_parser = ValidationSubsetDataParser(
             data_dict_files["validation"], parameters
         )
@@ -184,7 +177,6 @@ def TrainingManager_split(
     dataframe_testing: pd.DataFrame,
     outputDir: str,
     parameters: dict,
-    device: str,
     resume: bool,
     reset: bool,
 ):
@@ -197,7 +189,6 @@ def TrainingManager_split(
         dataframe_testing (pd.DataFrame): The testing data from CSV.
         outputDir (str): The main output directory.
         parameters (dict): The parameters dictionary.
-        device (str): The device to perform computations on.
         resume (bool): Whether the previous run will be resumed or not.
         reset (bool): Whether the previous run will be reset or not.
     """
@@ -220,11 +211,64 @@ def TrainingManager_split(
         with open(currentModelConfigYaml, "w") as handle:
             yaml.dump(parameters, handle, default_flow_style=False)
 
-    training_loop(
-        training_data=dataframe_train,
-        validation_data=dataframe_validation,
-        output_dir=outputDir,
-        device=device,
-        params=parameters,
-        testing_data=dataframe_testing,
+    train_subset_parser = TrainingSubsetDataParser(dataframe_train, parameters)
+    train_loader = train_subset_parser.create_subset_dataloader()
+    parameters = train_subset_parser.get_params_extended_with_subset_data()
+
+    val_subset_parser = ValidationSubsetDataParser(dataframe_validation, parameters)
+    val_loader = val_subset_parser.create_subset_dataloader()
+    parameters = val_subset_parser.get_params_extended_with_subset_data()
+
+    # This entire section should be handled in config parser
+
+    accelerator = parameters.get("accelerator", "auto")
+    allowed_accelerators = ["cpu", "gpu", "auto"]
+    assert (
+        accelerator in allowed_accelerators
+    ), f"Invalid accelerator selected: {accelerator}. Please select from {allowed_accelerators}"
+    strategy = parameters.get("strategy", "auto")
+    allowed_strategies = ["auto", "ddp"]
+    assert (
+        strategy in allowed_strategies
+    ), f"Invalid strategy selected: {strategy}. Please select from {allowed_strategies}"
+    precision = parameters.get("precision", "32")
+    allowed_precisions = [
+        "64",
+        "64-true",
+        "32",
+        "32-true",
+        "16",
+        "16-mixed",
+        "bf16",
+        "bf16-mixed",
+    ]
+    assert (
+        precision in allowed_precisions
+    ), f"Invalid precision selected: {precision}. Please select from {allowed_precisions}"
+
+    warn(
+        f"Using {accelerator} with {strategy} for training. Trainer will use only single accelerator instance. "
     )
+    trainer = pl.Trainer(
+        accelerator="auto",
+        strategy="auto",
+        fast_dev_run=False,
+        devices=1,  # single-device-single-node forced now
+        num_nodes=1,
+        precision=precision,
+        gradient_clip_algorithm=parameters["clip_mode"],
+        gradient_clip_val=parameters["clip_grad"],
+        max_epochs=parameters["num_epochs"],
+        sync_batchnorm=False,
+        enable_checkpointing=False,
+        logger=False,
+        num_sanity_val_steps=0,
+    )
+    module = GandlfLightningModule(parameters, output_dir=outputDir)
+    trainer.fit(module, train_loader, val_loader)
+
+    if dataframe_testing:
+        test_subset_parser = TestSubsetDataParser(dataframe_testing, parameters)
+        test_loader = test_subset_parser.create_subset_dataloader()
+        parameters = test_subset_parser.get_params_extended_with_subset_data()
+        trainer.test(module, test_loader)
