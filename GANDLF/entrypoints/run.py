@@ -20,7 +20,6 @@ def _run(
     input_data: str,
     train_flag: bool,
     model_dir: str,
-    device: str,
     reset_flag: bool,
     resume_flag: bool,
     output_path: Optional[str],
@@ -56,7 +55,6 @@ def _run(
     logging.debug(f"{input_data=}")
     logging.debug(f"{train_flag=}")
     logging.debug(f"{model_dir=}")
-    logging.debug(f"{device=}")
     logging.debug(f"{reset_flag=}")
     logging.debug(f"{resume_flag=}")
     logging.debug(f"{output_path=}")
@@ -66,7 +64,6 @@ def _run(
         config_file=config,
         model_dir=model_dir,
         train_mode=train_flag,
-        device=device,
         resume=resume_flag,
         reset=reset_flag,
         output_dir=output_path,
@@ -106,21 +103,6 @@ def _run(
     "inference: location of previous training session output",
 )
 @click.option(
-    "--device",
-    "-d",
-    # TODO: Not sure it's worth to restrict this list. What about other devices?
-    #  GaNDLF guarantees to work properly with these two options, but
-    #  other values may be partially working also.
-    #  * GaNDLF code convert `-1` to `cpu` (i.e. it is expected somebody may pass -1)
-    #  * `cuda:0` should work also, isn't it? Just would not be treated as `cuda`
-    #  * Would `mps` work?
-    #  * int values (like `1`) - are they supported? (legacy mode for cuda https://pytorch.org/docs/stable/tensor_attributes.html#torch-device)
-    type=click.Choice(["cuda", "cpu"]),
-    required=True,  # FIXME: either keep default value, or set required flag
-    help="Device to perform requested session on 'cpu' or 'cuda'; "
-    "for cuda, ensure CUDA_VISIBLE_DEVICES env var is set",
-)
-@click.option(
     "--reset",
     "-rt",
     is_flag=True,
@@ -151,7 +133,6 @@ def new_way(
     input_data: str,
     train: bool,
     model_dir: str,
-    device: str,
     reset: bool,
     resume: bool,
     output_path: str,
@@ -166,7 +147,6 @@ def new_way(
         input_data=input_data,
         train_flag=train,
         model_dir=model_dir,
-        device=device,
         reset_flag=reset,
         resume_flag=resume,
         output_path=output_path,
@@ -227,15 +207,7 @@ def old_way():
         type=str,
         help="Training: Output directory to save intermediate files and model weights; inference: location of previous training session output",
     )
-    parser.add_argument(
-        "-d",
-        "--device",
-        default="cuda",  # TODO: default value doesn't work as arg is required
-        metavar="",
-        type=str,
-        required=True,
-        help="Device to perform requested session on 'cpu' or 'cuda'; for cuda, ensure CUDA_VISIBLE_DEVICES env var is set",
-    )
+
     parser.add_argument(
         "-rt",
         "--reset",
@@ -282,7 +254,6 @@ def old_way():
         input_data=args.inputdata,
         train_flag=args.train,
         model_dir=args.modeldir,
-        device=args.device,
         reset_flag=args.reset,
         resume_flag=args.resume,
         output_path=args.outputdir,
