@@ -1,6 +1,5 @@
 import os
 import sys
-import cv2
 import time
 import psutil
 import torch
@@ -8,14 +7,17 @@ import torchio
 import warnings
 import openslide
 import numpy as np
-import pandas as pd
 import SimpleITK as sitk
 import lightning.pytorch as pl
+import torch.nn.functional as F
+
 
 from medcam import medcam
 from copy import deepcopy
 from statistics import mean
 from multiprocessing import Lock
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.utilities import rank_zero_only
 
 from GANDLF.logger import Logger
@@ -29,6 +31,11 @@ from GANDLF.metrics.metric_calculators import MetricCalculatorFactory
 from GANDLF.data.preprocessing import get_transforms_for_preprocessing
 from GANDLF.data.inference_dataloader_histopath import InferTumorSegDataset
 from GANDLF.utils.pred_target_processors import PredictionTargetProcessorFactory
+from GANDLF.privacy.opacus.opacus_anonymization_manager import (
+    OpacusAnonymizationManager,
+)
+from GANDLF.privacy.opacus import handle_dynamic_batch_size
+
 
 from GANDLF.utils import (
     optimize_and_save_model,
@@ -61,8 +68,7 @@ class GandlfLightningModule(pl.LightningModule):
         super().__init__()
         self.output_dir = output_dir
         self.params = deepcopy(params)
-        self.current_best_loss = sys.float_info.max
-        self.wait_count_before_early_stopping = 0
+        self.learning_rate = self.params["learning_rate"]
         self._problem_type_is_regression = params["problem_type"] == "regression"
         self._problem_type_is_classification = (
             params["problem_type"] == "classification"
@@ -264,20 +270,19 @@ class GandlfLightningModule(pl.LightningModule):
         self._print_training_initialization_info()
         self._set_training_start_time()
         self._print_channels_info()
-        self._try_to_load_model_training_start()
-        self._try_to_save_initial_model()
         self._initialize_train_logger()
         self._initialize_training_epoch_containers()
+        self.wait_count_before_early_stopping = 0
+        self.current_best_loss = sys.float_info.max
 
+        self.params["current_epoch"] = self.current_epoch
         # TODO check out if the disabled by default medcam is indeed what we
         # meant - it was taken from original code
-        if "medcam" in self.params:
-            if self.params["medcam"]:
-                self._inject_medcam_module()
-                self.params["medcam_enabled"] = False
-        if "differential_privacy" in self.params:
-            if self.params["differential_privacy"]:
-                self._initialize_differential_privacy()
+        if self.params.get("medcam"):
+            self._inject_medcam_module()
+            self.params["medcam_enabled"] = False
+        if self.params.get("differential_privacy"):
+            self._initialize_training_differential_privacy()
 
     def _try_to_load_model_training_start(self):
         """
@@ -310,8 +315,16 @@ class GandlfLightningModule(pl.LightningModule):
                 )
                 # I am purposefully omitting the line below, as "previous_parameters" are not used anywhere
                 # params["previous_parameters"] = main_dict.get("parameters", None)
+                state_dict = checkpoint_dict["model_state_dict"]
+                if self.params.get("differential_privacy"):
+                    # this is required for torch==1.11 and for DP inference
+                    new_state_dict = {}
+                    for key, val in state_dict.items():
+                        new_key = key.replace("_module.", "")
+                        new_state_dict[new_key] = val  # remove `module.`
+                    state_dict = new_state_dict
 
-                self.model.load_state_dict(checkpoint_dict["model_state_dict"])
+                self.model.load_state_dict(state_dict)
                 if self.trainer.training:
                     self.optimizers(False).load_state_dict(
                         checkpoint_dict["optimizer_state_dict"]
@@ -356,11 +369,32 @@ class GandlfLightningModule(pl.LightningModule):
             enabled=False,
         )
 
+    def _get_metrics_names_for_loggers(self):
+        """
+        Returns the names of the overall metrics to be logged if the problem type is classification or regression.
+        """
+        metric_names = list(self.params["metrics"])
+        overall_metrics = {}
+        if self._problem_type_is_regression:
+            overall_metrics = overall_stats(
+                torch.tensor([1]), torch.tensor([1]), self.params
+            )
+        elif self._problem_type_is_classification:
+            temp_tensor = torch.randint(
+                0, self.params["model"]["num_classes"], (5,), dtype=torch.int32
+            )
+            overall_metrics = overall_stats(temp_tensor, temp_tensor, self.params)
+        for overall_metric_key in overall_metrics.keys():
+            if overall_metric_key not in metric_names:
+                metric_names.append(overall_metric_key)
+
+        return metric_names
+
     @rank_zero_only
     def _initialize_train_logger(self):
         self.train_logger = Logger(
             logger_csv_filename=os.path.join(self.output_dir, "logs_training.csv"),
-            metrics=list(self.params["metrics"]),
+            metrics=self._get_metrics_names_for_loggers(),
             mode="train",
         )
 
@@ -421,17 +455,16 @@ class GandlfLightningModule(pl.LightningModule):
 
         images = self._prepare_images_batch_from_subject_data(subject)
         labels = self._prepare_labels_batch_from_subject_data(subject)
-        # TODO this is going to block any parallelism, as the spacing is going to unpredictably change across GPUs
-        self._set_spacing_params_for_subject(subject)
 
         images = self._ensure_proper_images_tensor_dimensions(images)
         labels = self._process_labels(labels)
-
         model_output, _ = self.forward(images)
         model_output, labels = self.pred_target_processor(model_output, labels)
 
-        loss = self.loss(model_output, labels)
-        metric_results = self.metric_calculators(model_output, labels)
+        loss = self.loss(model_output, labels, images)
+        metric_results = self.metric_calculators(
+            model_output, labels, subject_spacing=subject.get("spacing", None)
+        )
 
         if self._problem_type_is_regression or self._problem_type_is_classification:
             self.train_labels.append(labels.detach().cpu())
@@ -490,9 +523,6 @@ class GandlfLightningModule(pl.LightningModule):
 
         return label
 
-    def _set_spacing_params_for_subject(self, subject):
-        self.params["subject_spacing"] = subject.get("spacing", None)
-
     def _ensure_proper_images_tensor_dimensions(self, images: torch.Tensor):
         """
         Modify the input images by removing the singular depth dimension added
@@ -535,14 +565,32 @@ class GandlfLightningModule(pl.LightningModule):
         return labels
 
     def _handle_dynamic_batch_size_in_differential_privacy_mode(self, subject):
-        raise NotImplementedError(
-            "Differential privacy is not implemented yet in lightning version"
-        )
+        subject, _ = handle_dynamic_batch_size(subject, self.params)
+        return subject
 
-    def _initialize_differential_privacy(self):
-        raise NotImplementedError(
-            "Differential privacy is not implemented yet in lightning version"
+    def _initialize_training_differential_privacy(self):
+        self._check_if_opacus_is_applicable()
+        opacus_manager = OpacusAnonymizationManager(self.params)
+
+        (
+            model,
+            dp_optimizer,
+            train_dataloader,
+            privacy_engine,
+        ) = opacus_manager.apply_privacy(
+            self.model, self.optimizers().optimizer, self.trainer.train_dataloader
         )
+        self.model = model
+        self.trainer.fit_loop._data_source.instance = train_dataloader
+        self.trainer.optimizers = [dp_optimizer]
+        # TODO should we reinit the scheduler too?
+        self._dp_engine = privacy_engine
+
+    def _check_if_opacus_is_applicable(self):
+        if isinstance(self.trainer.strategy, DDPStrategy):
+            raise NotImplementedError(
+                "Differential privacy is not supported with DDP strategy. Please use single GPU."
+            )
 
     def on_train_epoch_start(self):
         self._set_epoch_start_time()
@@ -660,6 +708,7 @@ class GandlfLightningModule(pl.LightningModule):
         if os.path.exists(self.model_paths["latest"]):
             os.remove(self.model_paths["latest"])
         self._save_model(self.current_epoch, self.model_paths["latest"], False)
+
         print(f"Latest model saved")
 
     def _compute_metric_mean_across_values_from_batches(
@@ -743,8 +792,9 @@ class GandlfLightningModule(pl.LightningModule):
     def on_train_end(self):
         if os.path.exists(self.model_paths["best"]):
             # Why don't we handle it here with the full save_model function?
+            # TODO Onnx export seems to modify model INPLACE, so when doing cuda
             optimize_and_save_model(
-                self.model, self.params, self.model_paths["best"], onnx_export=True
+                self.model, self.params, self.model_paths["best"], onnx_export=False
             )
         self._print_total_training_time()
 
@@ -776,7 +826,7 @@ class GandlfLightningModule(pl.LightningModule):
     def _initialize_validation_logger(self):
         self.val_logger = Logger(
             logger_csv_filename=os.path.join(self.output_dir, "logs_validation.csv"),
-            metrics=list(self.params["metrics"]),
+            metrics=self._get_metrics_names_for_loggers(),
             mode="val",
             add_epsilon=bool(self.params.get("differential_privacy")),
         )
@@ -790,16 +840,13 @@ class GandlfLightningModule(pl.LightningModule):
             self.model.enable_medcam()
             self.params["medcam_enabled"] = True
         self._current_validation_epoch_save_dir = os.path.join(
-            self.output_dir, f"output_validation", f"epoch_{self.current_epoch}"
+            self.output_dir, "output_validation", f"epoch_{self.current_epoch}"
         )
         self._ensure_path_exists(self._current_validation_epoch_save_dir)
 
     def validation_step(self, subject, batch_idx):
         if self.params["verbose"]:
             self._print_currently_processed_subject(subject)
-
-        # TODO this is going to block any parallelism, as the spacing is going to unpredictably change across GPUs
-        self._set_spacing_params_for_subject(subject)
 
         subject_dict = self._initialize_subject_dict_nontraining_mode(subject)
         label_present = subject["label"] != ["NA"]
@@ -815,9 +862,10 @@ class GandlfLightningModule(pl.LightningModule):
             or self._problem_type_is_classification
             and label_present
         ):
-            model_output = self._get_predictions_on_subject_using_label_sampler(
-                subject_dict
-            )
+            (
+                model_output,
+                last_input_batch,
+            ) = self._get_predictions_on_subject_using_label_sampler(subject_dict)
 
             if self.params["save_output"]:
                 processed_logit = self._process_prediction_logit_for_row_writing(
@@ -833,9 +881,11 @@ class GandlfLightningModule(pl.LightningModule):
                 subject
             )
         else:
-            model_output = self._get_predictions_on_subject_using_grid_sampler(
-                subject_dict
-            )
+            (
+                model_output,
+                last_input_batch,
+            ) = self._get_predictions_on_subject_using_grid_sampler(subject_dict)
+
             if self.params["save_output"]:
                 self._save_predictions_for_segmentation_subject(model_output, subject)
 
@@ -855,8 +905,10 @@ class GandlfLightningModule(pl.LightningModule):
         if label is not None:
             label = self._process_labels(label)
             model_output, label = self.pred_target_processor(model_output, label)
-            loss = self.loss(model_output, label)
-            metric_results = self.metric_calculators(model_output, label)
+            loss = self.loss(model_output, label, last_input_batch)
+            metric_results = self.metric_calculators(
+                model_output, label, subject_spacing=subject.get("spacing", None)
+            )
 
             self.val_losses.append(loss)
             self.validation_metric_values.append(metric_results)
@@ -1028,7 +1080,7 @@ class GandlfLightningModule(pl.LightningModule):
     # in validation of regression and classification problems
     def _get_predictions_on_subject_using_label_sampler(
         self, subject_dict: dict
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Make predictions on the subject using the label sampler. Used for regression and classification problems.
 
@@ -1038,6 +1090,9 @@ class GandlfLightningModule(pl.LightningModule):
         Returns:
             total_logits_for_all_patches (torch.Tensor): The total logits for all patches
         extracted from a subject, normalized by the number of samples per volume.
+            last_batch_of_input_images (torch.Tensor): The last batch of input images. Used
+        mostly for special cases like deep_resunet, deep_unet, etc. when it is needed for
+        loss calculation.
         """
 
         def _prepare_images_batch_from_patch_regression_or_classification_with_label_sampler(
@@ -1085,7 +1140,10 @@ class GandlfLightningModule(pl.LightningModule):
         total_logits_for_all_patches = torch.cat(model_outputs_list).sum(
             dim=0, keepdim=True
         )
-        return total_logits_for_all_patches / self.params["q_samples_per_volume"]
+        return (
+            total_logits_for_all_patches / self.params["q_samples_per_volume"],
+            images_from_patches,
+        )
 
     @rank_zero_only
     def _determine_trainer_stage_string(self):
@@ -1098,6 +1156,7 @@ class GandlfLightningModule(pl.LightningModule):
             return "test"
         elif self.trainer.predicting:
             return "inference"
+
         return "train"
 
     def _determine_save_path_to_use(self):
@@ -1113,7 +1172,9 @@ class GandlfLightningModule(pl.LightningModule):
         else:
             raise RuntimeError("Output save path cannot be determined for training")
 
-    def _get_predictions_on_subject_using_grid_sampler(self, subject_dict: dict):
+    def _get_predictions_on_subject_using_grid_sampler(
+        self, subject_dict: dict
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Make predictions on the subject using the grid sampler. This is used in segmentation
         problems in validation and testing and for all problems in inference
@@ -1124,7 +1185,32 @@ class GandlfLightningModule(pl.LightningModule):
 
         Returns:
             aggregated_predictions (torch.Tensor): The predicted segmentation mask.
+            last_batch_of_input_images (torch.Tensor): The last batch of input images. Used
+        mostly for special cases like deep_resunet, deep_unet, etc. when it is needed for
+        loss calculation.
         """
+
+        def _ensure_output_is_tensor_for_special_architectures(
+            model_output: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]
+        ):
+            """
+            Helper function to ensure that the output is a tensor for special architectures
+            that return a tuple of tensors (SDnet, DeepResunet etc)
+
+            Args:
+                model_output (Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]): The model output.
+            """
+
+            if not isinstance(model_output, torch.Tensor):
+                warnings.warn(
+                    f"Model output is not a Tensor: {type(model_output)}. Say, `deep_resunet` and `deep_unet` may return "
+                    f"list of tensors on different scales instead of just one prediction Tensor. However due to "
+                    f"GaNDLF architecture it is expected that models return only one tensor. For deep_* models "
+                    f"only the biggest scale is processed. Use these models with caution till fix is implemented."
+                )
+                model_output = model_output[0]
+
+            return model_output
 
         def _ensure_output_shape_compatibility_with_torchio(model_output: torch.Tensor):
             """
@@ -1168,6 +1254,10 @@ class GandlfLightningModule(pl.LightningModule):
                 images_from_patches
             )
             model_output, attention_map = self.forward(images_from_patches)
+
+            model_output = _ensure_output_is_tensor_for_special_architectures(
+                model_output
+            )
             model_output = _ensure_output_shape_compatibility_with_torchio(model_output)
             if self.params["medcam_enabled"]:
                 medcam_attention_map_aggregator.add_batch(
@@ -1188,11 +1278,16 @@ class GandlfLightningModule(pl.LightningModule):
                 )
 
         if self._problem_type_is_regression or self._problem_type_is_classification:
-            return torch.cat(model_outputs_list).sum(dim=0, keepdim=True) / len(
-                patch_loader
+            return (
+                torch.cat(model_outputs_list).sum(dim=0, keepdim=True)
+                / len(patch_loader),
+                images_from_patches,
             )
 
-        return prediction_aggregator.get_output_tensor().unsqueeze(0).to(self.device)
+        return (
+            prediction_aggregator.get_output_tensor().unsqueeze(0).to(self.device),
+            images_from_patches,
+        )
 
     def _prepare_grid_sampler(self, subject_dict: dict):
         """
@@ -1238,14 +1333,19 @@ class GandlfLightningModule(pl.LightningModule):
             ] = self._compute_metric_mean_across_values_from_batches(metric_values)
 
         if self._problem_type_is_regression or self._problem_type_is_classification:
-            validation_epoch_average_metrics_overall = overall_stats(
-                torch.tensor(self.val_predictions),
-                torch.tensor(self.val_labels),
-                self.params,
+            # This is a workaround - sometimes the lists are empty
+            preds_or_labels_not_empty = not (
+                len(self.val_predictions) == 0 or len(self.val_labels) == 0
             )
-            validation_epoch_average_metrics.update(
-                validation_epoch_average_metrics_overall
-            )
+            if preds_or_labels_not_empty:
+                validation_epoch_average_metrics_overall = overall_stats(
+                    torch.tensor(self.val_predictions),
+                    torch.tensor(self.val_labels),
+                    self.params,
+                )
+                validation_epoch_average_metrics.update(
+                    validation_epoch_average_metrics_overall
+                )
         mean_loss = self._round_value_to_precision(
             torch.mean(torch.stack(self.val_losses)).item()
         )
@@ -1276,7 +1376,8 @@ class GandlfLightningModule(pl.LightningModule):
             self._save_predictions_csv_for_regression_or_classification(
                 self.rows_to_write, self._determine_save_path_to_use()
             )
-
+        if self.params.get("differential_privacy"):
+            self._print_differential_privacy_info()
         self._clear_validation_epoch_containers()
 
     @rank_zero_only
@@ -1293,6 +1394,14 @@ class GandlfLightningModule(pl.LightningModule):
     def _ensure_path_exists(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
+
+    @rank_zero_only
+    def _print_differential_privacy_info(self):
+        delta = self.params["differential_privacy"]["delta"]
+        epsilon = self._dp_engine.get_epsilon(delta)
+        print(f"Epoch {self.current_epoch} Privacy: ε = {epsilon:.2f}, δ = {delta}")
+        self.log("epsilon", epsilon, on_epoch=True, prog_bar=True)
+        self.log("delta", delta, on_epoch=True, prog_bar=True)
 
     # TODO called at the validation step, NOT at the end of the epoch - we want to avoid
     # saving all predictions for all subjects for the end of the epoch
@@ -1447,7 +1556,7 @@ class GandlfLightningModule(pl.LightningModule):
                 f"Validation loss did not improve. Waiting count before early stopping: {self.wait_count_before_early_stopping} / {self.params['patience']}",
                 flush=True,
             )
-            if self.wait_count_before_early_stopping >= self.params["patience"]:
+            if self.wait_count_before_early_stopping > self.params["patience"]:
                 self.trainer.should_stop = True
                 print(
                     f"Early stopping triggered at epoch {self.current_epoch}, validation loss did not improve for {self.params['patience']} epochs, with the best loss value being {self.current_best_loss}. Stopping training.",
@@ -1463,7 +1572,7 @@ class GandlfLightningModule(pl.LightningModule):
     def _initialize_test_logger(self):
         self.test_logger = Logger(
             logger_csv_filename=os.path.join(self.output_dir, "logs_test.csv"),
-            metrics=list(self.params["metrics"]),
+            metrics=self._get_metrics_names_for_loggers(),
             mode="test",
         )
 
@@ -1486,8 +1595,6 @@ class GandlfLightningModule(pl.LightningModule):
         if self.params["verbose"]:
             self._print_currently_processed_subject(subject)
 
-        self._set_spacing_params_for_subject(subject)
-
         subject_dict = self._initialize_subject_dict_nontraining_mode(subject)
         label_present = subject["label"] != ["NA"]
         value_keys_present = "value_keys" in self.params
@@ -1501,9 +1608,10 @@ class GandlfLightningModule(pl.LightningModule):
             or self._problem_type_is_classification
             and label_present
         ):
-            model_output = self._get_predictions_on_subject_using_label_sampler(
-                subject_dict
-            )
+            (
+                model_output,
+                last_input_batch,
+            ) = self._get_predictions_on_subject_using_label_sampler(subject_dict)
 
             if self.params["save_output"]:
                 processed_logit = self._process_prediction_logit_for_row_writing(
@@ -1519,9 +1627,10 @@ class GandlfLightningModule(pl.LightningModule):
                 subject
             )
         else:
-            model_output = self._get_predictions_on_subject_using_grid_sampler(
-                subject_dict
-            )
+            (
+                model_output,
+                last_input_batch,
+            ) = self._get_predictions_on_subject_using_grid_sampler(subject_dict)
             if self.params["save_output"]:
                 self._save_predictions_for_segmentation_subject(model_output, subject)
             if self._problem_type_is_segmentation and label_present:
@@ -1540,8 +1649,10 @@ class GandlfLightningModule(pl.LightningModule):
             label = self._process_labels(label)
             model_output, label = self.pred_target_processor(model_output, label)
 
-            loss = self.loss(model_output, label)
-            metric_results = self.metric_calculators(model_output, label)
+            loss = self.loss(model_output, label, last_input_batch)
+            metric_results = self.metric_calculators(
+                model_output, label, subject_spacing=subject.get("spacing", None)
+            )
 
             self.test_losses.append(loss)
             self.test_metric_values.append(metric_results)
@@ -1592,9 +1703,8 @@ class GandlfLightningModule(pl.LightningModule):
         self._initialize_inference_containers()
         self._try_to_load_model_inference_start()
 
-        if "differential_privacy" in self.params:
-            if self.params["differential_privacy"]:
-                self._initialize_differential_privacy()
+        if self.params.get("differential_privacy"):
+            self._initialize_inference_differential_privacy()
 
     def _try_to_load_model_inference_start(self):
         if self._try_to_load_model(self.model_paths["best"]):
@@ -1609,14 +1719,16 @@ class GandlfLightningModule(pl.LightningModule):
     @rank_zero_only
     def _initialize_inference_containers(self):
         self._current_inference_save_dir = os.path.join(
-            self.output_dir, f"output_inference"
+            self.output_dir, "output_inference"
         )  # TODO here we need some mechanism for separate outputs for nested inference
         self._ensure_path_exists(self._current_inference_save_dir)
         self.inference_losses = []
         self.inference_metric_values = []
         if self._problem_type_is_regression or self._problem_type_is_classification:
             self.rows_to_write = []
-            self.subject_classification_logits_mapping: Dict[str, torch.Tensor] = {}
+            self.subject_classification_class_probabilities: Dict[
+                str, torch.Tensor
+            ] = {}
 
     @rank_zero_only
     def _print_inference_initialization_info(self):
@@ -1632,7 +1744,9 @@ class GandlfLightningModule(pl.LightningModule):
     def predict_step(self, batch, batch_idx):
         if self.params["verbose"]:
             self._print_currently_processed_subject(batch)
-        # TODO both of those below should return something - check it
+        # TODO both of those below should return values to complete the logic
+        # of calculating metrics for classification case that is currently handled
+        # by saving/reading logits.csv file
         if self.params["modality"] == "rad":
             return self._radiology_inference_step(batch)
         else:
@@ -1650,9 +1764,10 @@ class GandlfLightningModule(pl.LightningModule):
                 or self._problem_type_is_classification
                 and label_present
             ):
-                model_output = self._get_predictions_on_subject_using_label_sampler(
-                    subject_dict
-                )
+                (
+                    model_output,
+                    last_input_batch,
+                ) = self._get_predictions_on_subject_using_label_sampler(subject_dict)
 
                 processed_logit = self._process_prediction_logit_for_row_writing(
                     model_output, self.params["scaling_factor"]
@@ -1667,9 +1782,10 @@ class GandlfLightningModule(pl.LightningModule):
                     subject
                 )
             else:
-                model_output = self._get_predictions_on_subject_using_grid_sampler(
-                    subject_dict
-                )
+                (
+                    model_output,
+                    last_input_batch,
+                ) = self._get_predictions_on_subject_using_grid_sampler(subject_dict)
                 self._save_predictions_for_segmentation_subject(model_output, subject)
                 label = self._initialize_nontraining_label_ground_truth_segmentation(
                     subject
@@ -1677,15 +1793,18 @@ class GandlfLightningModule(pl.LightningModule):
             label = self._process_labels(label)
             model_output, label = self.pred_target_processor(model_output, label)
 
-            loss = self.loss(model_output, label)
-            metric_results = self.metric_calculators(model_output, label)
+            loss = self.loss(model_output, label, last_input_batch)
+            metric_results = self.metric_calculators(
+                model_output, label, subject_spacing=subject.get("spacing", None)
+            )
 
             self.inference_losses.append(loss)
             self.inference_metric_values.append(metric_results)
         else:
-            model_output = self._get_predictions_on_subject_using_grid_sampler(
-                subject_dict
-            )
+            (
+                model_output,
+                last_input_batch,
+            ) = self._get_predictions_on_subject_using_grid_sampler(subject_dict)
             if self._problem_type_is_classification or self._problem_type_is_regression:
                 processed_logit = self._process_prediction_logit_for_row_writing(
                     model_output
@@ -1699,9 +1818,9 @@ class GandlfLightningModule(pl.LightningModule):
                 self._save_predictions_for_segmentation_subject(model_output, subject)
 
         if self._problem_type_is_classification:
-            self.subject_classification_logits_mapping[
+            self.subject_classification_class_probabilities[
                 subject["subject_id"][0]
-            ] = model_output
+            ] = F.softmax(model_output, dim=1)
 
     # TODO this has to be somehow handled in different way, we
     # are mixing too much logic in this single module
@@ -1943,13 +2062,16 @@ class GandlfLightningModule(pl.LightningModule):
     def configure_optimizers(self):
         params = deepcopy(self.params)
         params["model_parameters"] = self.model.parameters()
+        params["learning_rate"] = self.learning_rate
         optimizer = get_optimizer(params)
         if "scheduler" in self.params:
             params["optimizer_object"] = optimizer
             scheduler = get_scheduler(params)
-            return [optimizer], [scheduler]
-
-        return optimizer
+            optimizer_dict = {"optimizer": optimizer, "scheduler": scheduler}
+            if isinstance(scheduler, ReduceLROnPlateau):
+                optimizer_dict["monitor"] = "val_loss"
+            return optimizer_dict
+        return {"optimizer": optimizer}
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         """
